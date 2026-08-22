@@ -1,0 +1,13 @@
+{
+  "kaikki-fr": {
+    "url": "https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Ph%C3%A1p/kaikki.org-dictionary-Ti%E1%BA%BFngPh%C3%A1p.jsonl",
+    "sha256": "59c2054a219ea303928a44bec41d12a480f3220d1243673f21c51e3a67838493",
+    "bytes": 45689340,
+    "lines": 51737
+  },
+  "lexique": {
+    "from": "/Users/quang-huy.tran/Documents/dev/projects/conjugaison/data/sources/Lexique383.tsv",
+    "sha256": "637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b",
+    "bytes": 25850780
+  }
+}

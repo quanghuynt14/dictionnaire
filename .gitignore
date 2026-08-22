@@ -1,0 +1,13 @@
+# Les sources se retéléchargent : sources.lock dit laquelle, à l'octet près.
+# Cent cinquante mégaoctets de dumps n'ont rien à faire dans l'historique.
+data/sources/
+
+# Produits de compilation. Le seul contenu versionné est data/edits.jsonl.
+build/
+objects/
+objects-build.log
+src/phap-viet.xml
+tools/dictionary-development-kit/
+
+.DS_Store
+__pycache__/

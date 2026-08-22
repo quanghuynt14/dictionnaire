@@ -1,0 +1,12 @@
+// Les retouches. Un objet JSON par ligne, fusionné par `id` sur l'entrée de
+// base : les clés présentes remplacent, les absentes laissent en place. Un id
+// que la base ne connaît pas crée une entrée.
+//
+// C'est le seul contenu versionné du dépôt. La base se retélécharge, ceci non.
+//
+// Pourquoi « faire » est ici : le Wiktionnaire vietnamien ne l'a pas. Ni lui,
+// ni « je », « le », « ne », « à ». Ce sont les mots les plus fréquents du
+// français, et leur absence est la limite mesurée de la source — pas un bug du
+// pipeline. Les combler à la main est un travail borné : quelques centaines
+// d'entrées pour les mots-outils, et ce sont les plus consultées du dictionnaire.
+{"id": "fr:faire", "headword": "faire", "rank": 9999, "ipa": ["/fɛʁ/"], "blocks": [{"pos": "verb", "pos_vi": "Ngoại động từ", "senses": [{"gloss": "Làm, chế tạo, tạo ra.", "examples": [{"fr": "Faire un gâteau", "vi": "làm bánh"}, {"fr": "Faire une maison", "vi": "xây một ngôi nhà"}]}, {"gloss": "Làm, thực hiện, tiến hành.", "examples": [{"fr": "Faire ses devoirs", "vi": "làm bài tập"}, {"fr": "Faire du sport", "vi": "chơi thể thao"}, {"fr": "Qu'est-ce que tu fais ?", "vi": "bạn đang làm gì thế?"}]}, {"gloss": "Bằng, thành (kết quả của phép tính).", "examples": [{"fr": "Deux et deux font quatre", "vi": "hai cộng hai bằng bốn"}]}]}, {"pos": "verb", "pos_vi": "Động từ không ngôi", "senses": [{"gloss": "Chỉ thời tiết, trời.", "examples": [{"fr": "Il fait beau", "vi": "trời đẹp"}, {"fr": "Il fait froid", "vi": "trời lạnh"}, {"fr": "Il fait nuit", "vi": "trời tối"}]}]}], "derived": ["faire attention", "faire part", "faire semblant", "s'en faire", "faire la queue", "avoir affaire à"]}

@@ -1,0 +1,169 @@
+@charset "UTF-8";
+
+/*
+ * Deux voix, comme dans conjugaison et dans rappel : le français en romain à
+ * empattements, le vietnamien et les étiquettes en sans.
+ *
+ * Ce n'est pas décoratif. Les deux langues de cette page se lisent par leurs
+ * diacritiques — î contre ï d'un côté, hòa contre hoà contre họa de l'autre —
+ * et à 13 px une sans-serif les rend voisins. L'empattement les sépare côté
+ * français ; côté vietnamien c'est -apple-system qui a la meilleure couverture
+ * des tons, et aucune serif système ne fait mieux.
+ *
+ * La contrainte de largeur : Dictionary.app rend ceci dans deux boîtes, la
+ * fenêtre de l'app et la fenêtre volante de ⌃⌘D, qui fait environ 300 px. Rien
+ * ici n'a de largeur fixe et il n'y a aucun point de rupture — la page la plus
+ * étroite est celle pour laquelle on dessine, l'autre suit toute seule.
+ */
+
+.entry {
+  font-family: -apple-system, "SF Pro Text", sans-serif;
+  line-height: 1.5;
+}
+
+/* --- la vedette ---------------------------------------------------------- */
+
+.headword {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.7em;
+  font-weight: 600;
+  margin: 0 0 0.1em;
+}
+
+.ipa {
+  font-size: 0.85em;
+  color: #6b6b6b;
+  display: block;
+  margin-bottom: 0.9em;
+}
+
+/* --- une section par catégorie grammaticale ------------------------------ */
+
+.block { margin-bottom: 1em; }
+
+/* La catégorie vient du Wiktionnaire vietnamien et elle est plus fine que
+   l'anglais du champ `pos` : « Ngoại động từ » contre « Nội động từ » là où pos
+   dit « verb ». C'est une information sur le français écrite pour un lecteur
+   vietnamien, donc elle est dans la voix vietnamienne, pas dans celle du mot. */
+.pos {
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a6d3b;
+  margin-bottom: 0.35em;
+}
+
+.senses {
+  margin: 0;
+  padding-left: 1.3em;
+}
+
+.sense { margin-bottom: 0.45em; }
+
+.gloss { }
+
+/* Une glose du Wiktionnaire arrive parfois en deux temps : le sens, puis une
+   précision. La seconde est subordonnée à la première et doit se lire ainsi. */
+.sub {
+  display: block;
+  font-size: 0.92em;
+  color: #555;
+}
+
+/* --- les exemples -------------------------------------------------------- */
+
+/* C'est ce qui sépare ce dictionnaire d'une liste de traductions, et c'est la
+   partie qu'on lit vraiment. Elle est indentée sous son sens, jamais alignée
+   avec lui : un exemple qui commence à la même colonne que la glose se lit
+   comme un autre sens. */
+.examples {
+  list-style: none;
+  margin: 0.3em 0 0;
+  padding: 0 0 0 0.1em;
+  border-left: 2px solid rgba(138, 109, 59, 0.28);
+  padding-left: 0.6em;
+}
+
+.examples li { margin-bottom: 0.25em; }
+
+.ex-fr {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 0.95em;
+}
+
+/* Le vietnamien va à la ligne plutôt qu'après un tiret. À 300 px la traduction
+   et sa source se retrouvent sinon coupées au milieu, et l'œil ne sait plus
+   laquelle des deux il lit. */
+.ex-vi {
+  display: block;
+  font-size: 0.88em;
+  color: #4a4a4a;
+}
+
+/* --- formes fléchies et renvois ----------------------------------------- */
+
+.forms {
+  margin: 0.6em 0;
+  font-size: 0.85em;
+}
+
+.form-row { display: flex; gap: 0.5em; }
+
+.form {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  min-width: 6em;
+}
+
+.form-how { color: #6b6b6b; }
+
+/* Un verbe a plus de quarante formes et son propre dictionnaire, installé sur
+   la même machine. On le dit et on s'arrête là. */
+.forms-ref {
+  font-size: 0.82em;
+  font-style: italic;
+  color: #6b6b6b;
+  margin: 0.5em 0;
+}
+
+.rel {
+  font-size: 0.85em;
+  margin-top: 0.35em;
+}
+
+.rel-label {
+  font-weight: 600;
+  color: #8a6d3b;
+  margin-right: 0.4em;
+}
+
+.rel-words { font-family: "Iowan Old Style", Palatino, Georgia, serif; }
+
+.edited {
+  font-size: 0.78em;
+  font-style: italic;
+  color: #8a6d3b;
+  margin-top: 0.6em;
+}
+
+/* --- le tampon de fabrication ------------------------------------------- */
+
+.about {
+  font-size: 0.82em;
+  color: #6b6b6b;
+  line-height: 1.7;
+}
+
+.credit { font-size: 0.92em; margin-top: 0.4em; }
+
+/* --- thème sombre -------------------------------------------------------- */
+
+/* Ne marche que si Info.plist porte DCSDictionaryUseSystemAppearance. Sans
+   cette clé la fenêtre reste blanche et tout ce bloc est mort. */
+@media (prefers-color-scheme: dark) {
+  .ipa, .form-how, .forms-ref, .about { color: #9a9a9a; }
+  .sub { color: #b0b0b0; }
+  .ex-vi { color: #b8b8b8; }
+  .pos, .rel-label, .edited { color: #d0a85f; }
+  .examples { border-left-color: rgba(208, 168, 95, 0.32); }
+}
