@@ -9,5 +9,10 @@
     "from": "/Users/quang-huy.tran/Documents/dev/projects/conjugaison/data/sources/Lexique383.tsv",
     "sha256": "637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b",
     "bytes": 25850780
+  },
+  "verbiste": {
+    "from": "/Users/quang-huy.tran/Documents/dev/projects/conjugaison/data/sources",
+    "verbs-fr.xml": "f51b0a868f63036313f13e97d7eeca8ff5a0c3d4ffabfbe4b46150af379c0042",
+    "conjugations-fr.xml": "98794bd4ae37fcf0f776afc9bbf6427b927a6999bb97e13fc2cf5125fe6891f9"
   }
 }

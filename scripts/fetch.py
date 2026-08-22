@@ -54,6 +54,17 @@ def main():
     else:
         print(f"  = {S.LEXIQUE.name} déjà là")
 
+    for name in ("verbs-fr.xml", "conjugations-fr.xml"):
+        dest = S.SOURCES / name
+        if force or not dest.exists():
+            src = S.VERBISTE_FROM / name
+            if not src.exists():
+                sys.exit(f"{name} introuvable dans {S.VERBISTE_FROM}.")
+            print(f"  ← {src}")
+            shutil.copy2(src, dest)
+        else:
+            print(f"  = {name} déjà là")
+
     lock = {
         "kaikki-fr": {
             "url": S.KAIKKI_FR_URL,
@@ -65,6 +76,11 @@ def main():
             "from": str(S.LEXIQUE_FROM),
             "sha256": digest(S.LEXIQUE),
             "bytes": S.LEXIQUE.stat().st_size,
+        },
+        "verbiste": {
+            "from": str(S.VERBISTE_FROM),
+            "verbs-fr.xml": digest(S.VERBS),
+            "conjugations-fr.xml": digest(S.CONJUGATIONS),
         },
     }
     S.LOCK.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n",

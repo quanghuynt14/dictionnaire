@@ -20,8 +20,13 @@ import unicodedata
 import sources as S
 
 BUNDLE = pathlib.Path.home() / "Library/Dictionaries/Pháp-Việt.dictionary"
-DEFAULT_FORMS = ["allions", "irions", "vécu", "eu", "sois", "meilleures",
-                 "chats", "aller", "langue", "beau"]
+# « allions » et « prises » sont là pour la raison qui a fait ajouter Verbiste :
+# une forme mène à plusieurs verbes, et les deux doivent sortir. « allie » y est
+# pour le pliage des accents, qui ramène « allié » en plus — comportement voulu
+# qu'un vérificateur naïf prend pour une panne.
+DEFAULT_FORMS = ["allions", "allie", "prises", "assises", "irions", "vécu",
+                 "eu", "sois", "meilleures", "chats", "payions", "fussions",
+                 "aller", "allier", "langue", "beau"]
 
 cf = ctypes.CDLL(ctypes.util.find_library("CoreFoundation"))
 cs = ctypes.CDLL(ctypes.util.find_library("CoreServices"))
@@ -184,10 +189,20 @@ def main():
         text = pystr(cs.DCSCopyTextDefinition(dictionary, cfstr(form),
                                               CFRange(0, len(form)))) or ""
 
-        # Les vedettes que cette clé atteint : le lemme attendu, plus la forme
-        # elle-même quand elle est aussi une vedette.
-        candidates = list(expected) + ([form] if form in lexicon
-                                       and form not in expected else [])
+        # Les vedettes que cette clé atteint, lues sur ce que le bundle a
+        # *répondu* plutôt que sur ce qu'on avait prévu. Une étiquette est soit
+        # « X », soit « X (Y) » — la seconde forme nomme la vedette en Y.
+        #
+        # Les déduire de notre propre index était trop étroit : le DDK ajoute
+        # des clés sans diacritiques pour que « vecu » trouve « vécu », et
+        # « allie » ramène donc aussi « allié », qui est une vedette à part
+        # entière. C'est la fonctionnalité qui marche, pas une panne — mais le
+        # vérificateur la signalait comme telle.
+        def headword_of(label):
+            return label[label.rindex("(") + 1:-1] if label.endswith(")") \
+                and "(" in label else label
+
+        candidates = list(dict.fromkeys(headword_of(h) for h in headwords))
 
         def first_gloss(head):
             entry = lexicon.get(head)
@@ -205,14 +220,20 @@ def main():
                 f"d'aucune des vedettes atteintes ({', '.join(candidates)})")
             mark = "✗"
 
-        head = next(iter(expected))
-        how = next((x["analysis"] for x in forms_index.get(form, [])
-                    if x["lemma"] == head), None)
-        via = f"  ({how})" if how and form != head else ""
-        # Le cas où la forme est aussi une vedette mérite d'être dit : c'est là
-        # que la liste de résultats affiche deux lignes, et c'est voulu.
-        aussi = f"  [aussi vedette]" if form in lexicon and form not in expected else ""
-        print(f"  {mark} « {form} » → {head}   {glosses.get(head) or ''}{via}{aussi}")
+        # Toutes les vedettes attendues, pas une prise au hasard dans l'ensemble.
+        # « allions » mène à aller *et* à allier, et n'en afficher qu'une donnait
+        # une sortie qui avait l'air d'une réponse unique.
+        for head in sorted(expected):
+            how = next((x["analysis"] for x in forms_index.get(form, [])
+                        if x["lemma"] == head), None)
+            via = f"   {how}" if how and form != head else ""
+            print(f"  {mark} « {form} » → {head}   {glosses.get(head) or ''}{via}")
+        # Les vedettes atteintes en plus : par pliage des accents, ou parce que
+        # la forme est elle-même une vedette. C'est là que la liste de résultats
+        # de Dictionary.app affiche plusieurs lignes, et c'est voulu.
+        extra = [h for h in candidates if h not in expected]
+        if extra:
+            print(f"      aussi : {', '.join(extra)}")
 
     if problems:
         print()

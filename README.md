@@ -13,10 +13,12 @@ Il sort par deux portes, du même fichier :
 
 ## État
 
-**Phase 0.** La chaîne complète marche, sur une coupe de trois mille lemmes.
+**Phase 0.** La chaîne complète marche, sur tout le dump.
 
 ```
-2 987 entrées · 11 768 sens · 20 690 exemples · 27 259 clés · XML de 7,4 Mo
+45 987 entrées · 79 303 sens · 45 995 exemples traduits
+240 137 formes fléchies · 291 080 clés · XML de 52 Mo · bundle de 54 Mo
+normalisation 4 s · compilation DDK 1 min 25
 ```
 
 Ce qui est fait : récupération et verrouillage des sources, normalisation,
@@ -47,10 +49,39 @@ make verify    # le bundle installé sait-il y répondre ?  ← celui qui compte
 | Source | Ce qu'elle donne | Licence |
 |---|---|---|
 | [Wiktionnaire vietnamien](https://vi.wiktionary.org), section « Tiếng Pháp », extrait par [kaikki.org](https://kaikki.org/viwiktionary/) | 46 183 vedettes françaises, 79 558 sens **glosés en vietnamien**, 34 % avec exemples traduits | CC BY-SA 4.0 |
-| [Lexique 3.83](http://www.lexique.org) | 125 653 formes fléchies → lemme + analyse, et la fréquence qui décide de la coupe | CC BY-SA 4.0 |
+| [Verbiste](http://sarrazip.com/dev/verbiste.html) | 146 modèles de conjugaison qui **engendrent** le paradigme complet de 7 011 verbes | GPL v2 |
+| [Lexique 3.83](http://www.lexique.org) | les pluriels et les féminins, et la fréquence qui ordonne le dictionnaire | CC BY-SA 4.0 |
 
-Les deux se repartagent aux mêmes conditions. Le bundle les cite dans
-`DCSDictionaryCopyright` et dans son entrée « về từ điển này ».
+Le bundle les cite dans `DCSDictionaryCopyright` et dans son entrée
+« về từ điển này ».
+
+### Pourquoi Verbiste *et* Lexique
+
+Lexique n'atteste que ce que ses corpus contiennent. Mesuré sur ses 6 399
+verbes : **10,1 formes en moyenne**, là où un paradigme français en compte
+environ quarante-cinq. 56 % des verbes sous les dix formes. Huit verbes au
+complet, sur 6 399.
+
+Concrètement : « allions » y figure sous *aller*, et nulle part sous *allier* —
+dont Lexique ne connaît que treize formes. Or « nous allions » est du français
+courant dans les deux sens. Un dictionnaire qu'on interroge en tapant la forme
+qu'on vient de lire ne peut pas se permettre ce trou.
+
+Verbiste est génératif : un modèle par famille, un radical par verbe, et les
+quarante-cinq cases sortent — attestées ou non, ce qui est exactement ce qu'on
+veut, puisque la question n'est pas « ce mot est-il fréquent » mais « qu'est-ce
+que je viens de lire ».
+
+D'où le partage : **les formes verbales viennent de Verbiste et de lui seul.**
+Ce n'est pas qu'une question de complétude — Lexique porte aussi des erreurs de
+lemmatisation sur les verbes (il range la forme « allier » sous le lemme
+« aller »), et les mélanger ferait entrer ces erreurs dans l'index. Lexique
+garde les noms, les adjectifs, et la fréquence, où il est bon.
+
+Ce que ça change : l'index passe de 80 960 formes à **240 137**, dont 4 868
+ambiguës. Ce sont les cas où le français est vraiment difficile —
+« prises » mène à *pris*, *prise*, *prendre* et *priser*, et la liste de
+résultats affiche les quatre.
 
 **Ce que la source ne couvre pas.** Mesuré, pas supposé : sur les 3 000 lemmes
 les plus fréquents du français, 89 % ont une entrée. Les 11 % manquants sont

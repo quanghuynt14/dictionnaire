@@ -34,6 +34,7 @@ import sys
 import unicodedata
 
 import sources as S
+import verbiste
 
 # --- l'analyse d'une forme fléchie ------------------------------------------
 
@@ -87,6 +88,19 @@ def analyse_verbe(code):
     return f"{label} · {personne}" if personne else label
 
 
+def analyse_code(code, accord=None):
+    """Le code compact de Verbiste -> l'étiquette lisible.
+
+    L'accord n'existe que pour le participe passé, où il remplace la personne :
+    « allié » et « alliées » sont la même case à deux accords près, pas deux
+    personnes.
+    """
+    label = analyse_verbe(code)
+    if label and accord:
+        return f"{label} · {accord}"
+    return label
+
+
 def analyse(row):
     """La ligne Lexique -> les analyses de cette forme, une par élément.
 
@@ -130,7 +144,14 @@ def load_lexique():
                 fl = float(row["freqlemlivres"] or 0)
             except ValueError:
                 f2 = fl = 0.0
+            # La fréquence est prise sur toutes les lignes, verbes compris :
+            # c'est elle qui ordonne le dictionnaire, et elle est bonne.
             freq[lemme] = max(freq.get(lemme, 0.0), (f2 + fl) / 2)
+            # Les formes verbales, non. Elles viennent de Verbiste, qui les
+            # engendre au complet là où Lexique n'atteste qu'un dixième du
+            # paradigme — et qui ne range pas « allier » sous « aller ».
+            if row["cgram"] in ("VER", "AUX"):
+                continue
             if ortho != lemme:
                 forms[ortho].append((lemme, analyse(row)))
     return forms, freq
@@ -306,6 +327,15 @@ def main():
     # L'index des formes, restreint à ce qu'on a gardé. Une forme dont le lemme
     # n'est pas dans la coupe ne sert à rien : elle mènerait à une page absente.
     heads = {e["headword"] for e in entries.values()}
+
+    # Les paradigmes, après la coupe : on n'engendre que ce qui mène à une page.
+    conjugated, n_verbs, n_known = verbiste.build(heads)
+    for form, lemme, code, accord in conjugated:
+        if form != lemme:
+            forms[form].append((lemme, [analyse_code(code, accord)]))
+    print(f"    {n_verbs} verbes conjugués sur les {n_known} de Verbiste, "
+          f"{len(conjugated)} formes engendrées")
+
     index = collections.defaultdict(list)
     for form, targets in forms.items():
         merged = {}
@@ -319,14 +349,21 @@ def main():
             index[form].append({"lemma": lemme,
                                 "analysis": ", ".join(labels) or None})
 
+    # L'index à l'envers : lemme -> ses formes. Le construire une fois coûte un
+    # parcours ; le redemander par entrée en coûtait 46 000, soit le produit des
+    # deux tailles. C'est ce qui faisait passer la normalisation de dix secondes
+    # à plusieurs minutes dès que Verbiste a triplé le nombre de formes.
+    by_lemma = collections.defaultdict(list)
+    for form, targets in index.items():
+        for target in targets:
+            by_lemma[target["lemma"]].append(form)
+
     S.BUILD.mkdir(exist_ok=True)
     out = S.BUILD / "lexicon.jsonl"
     with open(out, "w", encoding="utf-8") as f:
         for entry in sorted(entries.values(), key=lambda e: -e["rank"]):
-            entry["forms"] = sorted(
-                (form for form, t in index.items()
-                 if any(x["lemma"] == entry["headword"] for x in t)),
-                key=str.lower)
+            entry["forms"] = sorted(by_lemma.get(entry["headword"], []),
+                                    key=str.lower)
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     idx = S.BUILD / "forms.json"

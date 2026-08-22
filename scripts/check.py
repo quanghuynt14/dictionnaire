@@ -24,8 +24,9 @@ X = "{http://www.w3.org/1999/xhtml}"
 # Ce qu'un dictionnaire français doit savoir faire, et que rien ne garantit :
 # une forme fléchie très éloignée du lemme, un radical supplétif, un participe
 # irrégulier, un pluriel, un féminin, et la vedette nue.
-DEFAULT_FORMS = ["allions", "irions", "vécu", "eu", "sois", "meilleures",
-                 "chats", "aller", "langue", "beau"]
+DEFAULT_FORMS = ["allions", "allie", "prises", "assises", "irions", "vécu",
+                 "eu", "sois", "meilleures", "chats", "payions", "fussions",
+                 "aller", "allier", "langue", "beau"]
 
 
 def entries_of(xml):

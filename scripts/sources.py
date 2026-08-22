@@ -27,6 +27,14 @@ KAIKKI_FR = SOURCES / "kaikki-fr.jsonl"
 LEXIQUE = SOURCES / "Lexique383.tsv"
 LEXIQUE_FROM = ROOT.parent / "conjugaison" / "data" / "sources" / "Lexique383.tsv"
 
+# Verbiste. Lexique n'atteste que ce que ses corpus contiennent — dix formes par
+# verbe en moyenne, sur les quarante-cinq d'un paradigme. Verbiste les *engendre*
+# depuis cent quarante-six modèles, ce qui est la seule façon d'avoir « allions »
+# sous allier comme sous aller. Les deux fichiers viennent aussi de conjugaison.
+VERBS = SOURCES / "verbs-fr.xml"
+CONJUGATIONS = SOURCES / "conjugations-fr.xml"
+VERBISTE_FROM = ROOT.parent / "conjugaison" / "data" / "sources"
+
 LOCK = ROOT / "data" / "sources.lock"
 
 # Ce qui doit apparaître dans le bundle et sur le site. CC BY-SA veut dire deux
@@ -35,4 +43,5 @@ ATTRIBUTION = {
     "kaikki": "Wiktionnaire vietnamien (vi.wiktionary.org), extrait par "
               "wiktextract / kaikki.org — CC BY-SA 4.0",
     "lexique": "Lexique 3.83 (lexique.org), Boris New & Christophe Pallier — CC BY-SA 4.0",
+    "verbiste": "Verbiste, Pierre Sarrazin (sarrazip.com), via verbecc de Brett Tolbert — GPL v2",
 }
