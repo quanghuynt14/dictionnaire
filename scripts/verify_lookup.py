@@ -171,26 +171,48 @@ def main():
             continue
 
         # Dictionary.app rend la page en texte brut. On ne cherche pas à la
-        # relire : on exige que la première glose de la vedette attendue s'y
-        # retrouve telle quelle. C'est ce qui prouve que la page ouverte est
-        # celle qu'on a écrite, et pas une voisine ramenée par le pliage.
+        # relire : on exige qu'une première glose s'y retrouve telle quelle.
+        # C'est ce qui prouve que la page ouverte est une page qu'on a écrite,
+        # et pas une voisine ramenée par le pliage des accents.
+        #
+        # « une » et non « celle de la vedette attendue », parce qu'une clé mène
+        # légitimement à plusieurs pages : « vécu » est à la fois le participe de
+        # vivre *et* une vedette à lui — adjectif « đã trải qua », nom « vốn
+        # sống ». Le bundle rend les deux enregistrements, dans le bon ordre, et
+        # DCSCopyTextDefinition n'en rend qu'un sans garantir lequel. Exiger
+        # celui de vivre faisait échouer une recherche parfaitement juste.
         text = pystr(cs.DCSCopyTextDefinition(dictionary, cfstr(form),
                                               CFRange(0, len(form)))) or ""
-        head = next(iter(expected))
-        entry = lexicon.get(head)
-        gloss = None
-        if entry and entry["blocks"] and entry["blocks"][0]["senses"]:
-            gloss = entry["blocks"][0]["senses"][0]["gloss"]
+
+        # Les vedettes que cette clé atteint : le lemme attendu, plus la forme
+        # elle-même quand elle est aussi une vedette.
+        candidates = list(expected) + ([form] if form in lexicon
+                                       and form not in expected else [])
+
+        def first_gloss(head):
+            entry = lexicon.get(head)
+            if entry and entry["blocks"] and entry["blocks"][0]["senses"]:
+                return entry["blocks"][0]["senses"][0]["gloss"]
+            return None
+
+        glosses = {h: first_gloss(h) for h in candidates}
+        hit = next((h for h, g in glosses.items() if g and g in text), None)
+
         mark = "✓"
-        if gloss and gloss not in text:
-            problems.append(f"« {form} » : la page de « {head} » ne contient pas "
-                            f"sa première glose « {gloss} »")
+        if not hit and any(glosses.values()):
+            problems.append(
+                f"« {form} » : la page rendue ne contient la première glose "
+                f"d'aucune des vedettes atteintes ({', '.join(candidates)})")
             mark = "✗"
 
+        head = next(iter(expected))
         how = next((x["analysis"] for x in forms_index.get(form, [])
                     if x["lemma"] == head), None)
         via = f"  ({how})" if how and form != head else ""
-        print(f"  {mark} « {form} » → {head}   {gloss or ''}{via}")
+        # Le cas où la forme est aussi une vedette mérite d'être dit : c'est là
+        # que la liste de résultats affiche deux lignes, et c'est voulu.
+        aussi = f"  [aussi vedette]" if form in lexicon and form not in expected else ""
+        print(f"  {mark} « {form} » → {head}   {glosses.get(head) or ''}{via}{aussi}")
 
     if problems:
         print()
