@@ -18,7 +18,7 @@ Il sort par deux portes, du même fichier :
 ```
 45 987 vedettes · 10 355 pages de forme ambiguë · 79 303 sens
 45 995 exemples traduits · 240 137 formes fléchies · 280 436 clés
-XML de 70 Mo · bundle de 53 Mo · normalisation 4 s · compilation DDK 2 min
+XML de 69 Mo · bundle de 52 Mo · normalisation 4 s · compilation DDK 2 min
 ```
 
 Ce qui est fait : récupération et verrouillage des sources, normalisation,
@@ -139,11 +139,14 @@ qui possède la clé seule et rassemble tous les mots qu'elle atteint.
 
 ```
 allions          2 mots
-  aller          imparfait de l'indicatif · ngôi 1 số nhiều…
-                 Đi.  « Aller à pied » — đi bộ
-  allier         présent de l'indicatif · ngôi 1 số nhiều…
-                 Pha, trộn (để chế hợp kim).  « Allier l'or avec l'argent »
+  aller          Đi.  « Aller à pied » — đi bộ
+  allier         Pha, trộn (để chế hợp kim).  « Allier l'or avec l'argent »
 ```
+
+L'analyse de la forme n'y est pas — « imparfait de l'indicatif, première
+personne du pluriel ». La page répond à « quels mots est-ce que je viens de
+lire », et deux vedettes y répondent. *Quelle case de quel verbe* est une autre
+question, et elle a déjà son dictionnaire sur la même machine.
 
 10 355 pages, 5 020 vedettes absorbées, et le corps duplique 9,4 Mo. Les 96,3 %
 restants ne bougent pas : leur clé reste sur la vedette, leur corps n'est écrit

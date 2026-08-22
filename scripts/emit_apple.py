@@ -150,7 +150,7 @@ def body(entry, forms_index):
     return p
 
 
-def merged_body(form, members, forms_index):
+def merged_body(form, members):
     """La page d'une forme qui mène à plusieurs mots.
 
     Pourquoi elle existe. La fenêtre de survol — ⌃⌘D, celle qu'on utilise
@@ -168,16 +168,18 @@ def merged_body(form, members, forms_index):
 
     Les autres 96,3 % ne bougent pas : leur clé reste sur la vedette, et le
     corps n'est écrit qu'une fois.
+
+    Ce qu'on n'écrit pas : l'analyse de la forme — « imparfait de l'indicatif,
+    première personne du pluriel ». La page répond à « quels mots est-ce que je
+    viens de lire », et deux vedettes y répondent. *Quelle case* de quel verbe
+    est une autre question, et elle a déjà son dictionnaire sur la même machine.
     """
     p = ['  <div class="entry">',
          f'    <h1 class="headword">{e(form)}</h1>',
          f'    <div class="ambig">{len(members)} mots</div>']
-    for entry, how in members:
-        head = entry["headword"]
+    for entry in members:
         p.append('    <div class="member">')
-        p.append(f'      <h2 class="member-head">{e(head)}</h2>')
-        if how:
-            p.append(f'      <div class="member-how">{e(how)}</div>')
+        p.append(f'      <h2 class="member-head">{e(entry["headword"])}</h2>')
         p += blocks_html(entry, indent="      ")
         p.append('    </div>')
     p.append('  </div>')
@@ -219,16 +221,11 @@ def main():
         # réponse.
         for form, members in sorted(ambiguous.items()):
             eid = "a_" + entry_id(form)[2:]
-            with_how = [(entry, next((x["analysis"]
-                                      for x in forms_index.get(form, [])
-                                      if x["lemma"] == entry["headword"]), None)
-                         if via else None)
-                        for entry, via in members]
             f.write(f'<d:entry id="{eid}" d:title="{html.escape(form)}">\n')
             f.write(f'  <d:index d:value="{html.escape(form)}" '
                     f'd:title="{html.escape(form)}"/>\n')
             n_keys += 1
-            f.write("\n".join(merged_body(form, with_how, forms_index)) + "\n")
+            f.write("\n".join(merged_body(form, [x for x, _ in members])) + "\n")
             f.write("</d:entry>\n")
 
         for entry in lexicon:

@@ -125,19 +125,15 @@
   padding-top: 0.9em;
 }
 
+/* L'analyse de la forme n'est pas ici — « imparfait de l'indicatif, première
+   personne du pluriel » est une question de conjugaison, et la conjugaison a
+   son dictionnaire à côté. Cette page dit quels mots la forme atteint, et
+   s'arrête là. D'où la marge sous le titre : plus rien ne s'intercale. */
 .member-head {
   font-family: "Iowan Old Style", Palatino, Georgia, serif;
   font-size: 1.15em;
   font-weight: 600;
-  margin: 0;
-}
-
-/* Pourquoi cette forme mène à ce mot-là. C'est la seule ligne de la page qui
-   réponde à la question qu'on s'est posée en survolant le mot. */
-.member-how {
-  font-size: 0.8em;
-  color: #6b6b6b;
-  margin-bottom: 0.5em;
+  margin: 0 0 0.4em;
 }
 
 /* --- formes fléchies et renvois ----------------------------------------- */
@@ -204,7 +200,6 @@
   .sub { color: #b0b0b0; }
   .ex-vi { color: #b8b8b8; }
   .pos, .rel-label, .edited, .ambig { color: #d0a85f; }
-  .member-how { color: #9a9a9a; }
   .member + .member { border-top-color: rgba(255, 255, 255, 0.16); }
   .examples { border-left-color: rgba(208, 168, 95, 0.32); }
 }
