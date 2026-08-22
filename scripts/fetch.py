@@ -10,10 +10,12 @@ Usage :  python3 scripts/fetch.py [--force]
 """
 
 import hashlib
+import io
 import json
 import shutil
 import sys
 import urllib.request
+import zipfile
 
 import sources as S
 
@@ -26,66 +28,83 @@ def digest(path):
     return h.hexdigest()
 
 
-def download(url, dest):
+def download(url, dest, force):
+    if dest.exists() and not force:
+        print(f"  = {dest.name} déjà là")
+        return
     print(f"  ↓ {dest.name}")
     with urllib.request.urlopen(url) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f)
+
+
+def copy_from(src, dest, force):
+    if dest.exists() and not force:
+        print(f"  = {dest.name} déjà là")
+        return
+    if not src.exists():
+        sys.exit(f"{src} introuvable.")
+    print(f"  ← {src}")
+    shutil.copy2(src, dest)
+
+
+def fetch_wordnet(force):
+    """Les quatre fichiers d'exceptions, extraits de l'archive de nltk.
+
+    On ne garde que les .exc — quatre-vingt-dix kilo-octets sur onze mégas. Le
+    reste de WordNet est une base de synsets dont ce projet n'a pas l'usage :
+    les sens viennent du Wiktionnaire vietnamien, pas d'ici.
+    """
+    S.WORDNET_EXC.mkdir(parents=True, exist_ok=True)
+    if not force and all((S.WORDNET_EXC / f"{n}.exc").exists()
+                         for n in ("noun", "verb", "adj", "adv")):
+        print("  = exceptions WordNet déjà là")
+        return
+    print("  ↓ wordnet.zip")
+    with urllib.request.urlopen(S.WORDNET_URL) as r:
+        blob = io.BytesIO(r.read())
+    with zipfile.ZipFile(blob) as z:
+        for member in z.namelist():
+            if member.endswith(".exc"):
+                name = member.rsplit("/", 1)[-1]
+                (S.WORDNET_EXC / name).write_bytes(z.read(member))
 
 
 def main():
     force = "--force" in sys.argv
     S.SOURCES.mkdir(parents=True, exist_ok=True)
 
-    if force or not S.KAIKKI_FR.exists():
-        download(S.KAIKKI_FR_URL, S.KAIKKI_FR)
-    else:
-        print(f"  = {S.KAIKKI_FR.name} déjà là (--force pour retélécharger)")
+    lock = {}
 
-    # Lexique vient du dépôt voisin plutôt que du réseau : conjugaison l'a déjà,
-    # il pèse vingt-cinq mégaoctets, et les deux dictionnaires doivent parler de
-    # la même morphologie. Deux copies d'un même fichier qui divergent, c'est un
-    # bug qu'on ne verrait jamais.
-    if force or not S.LEXIQUE.exists():
-        if not S.LEXIQUE_FROM.exists():
-            sys.exit(f"Lexique383.tsv introuvable dans {S.LEXIQUE_FROM}.\n"
-                     "Récupérez-le sur http://www.lexique.org et posez-le là.")
-        print(f"  ← {S.LEXIQUE_FROM}")
-        shutil.copy2(S.LEXIQUE_FROM, S.LEXIQUE)
-    else:
-        print(f"  = {S.LEXIQUE.name} déjà là")
+    for code, cfg in S.LANGS.items():
+        download(cfg["kaikki_url"], cfg["kaikki"], force)
+        lock[f"kaikki-{code}"] = {
+            "url": cfg["kaikki_url"],
+            "sha256": digest(cfg["kaikki"]),
+            "bytes": cfg["kaikki"].stat().st_size,
+            "lines": sum(1 for _ in open(cfg["kaikki"], encoding="utf-8")),
+        }
 
-    for name in ("verbs-fr.xml", "conjugations-fr.xml"):
-        dest = S.SOURCES / name
-        if force or not dest.exists():
-            src = S.VERBISTE_FROM / name
-            if not src.exists():
-                sys.exit(f"{name} introuvable dans {S.VERBISTE_FROM}.")
-            print(f"  ← {src}")
-            shutil.copy2(src, dest)
-        else:
-            print(f"  = {name} déjà là")
+    # Français : Verbiste et Lexique viennent du dépôt voisin. Les deux projets
+    # doivent parler de la même morphologie ; deux copies qui divergent seraient
+    # un bug qu'on ne verrait jamais.
+    for name in ("Lexique383.tsv", "verbs-fr.xml", "conjugations-fr.xml"):
+        copy_from(S.CONJUGAISON / name, S.SOURCES / name, force)
+    lock["lexique"] = {"from": str(S.CONJUGAISON), "sha256": digest(S.LEXIQUE)}
+    lock["verbiste"] = {"verbs": digest(S.VERBS),
+                        "conjugations": digest(S.CONJUGATIONS)}
 
-    lock = {
-        "kaikki-fr": {
-            "url": S.KAIKKI_FR_URL,
-            "sha256": digest(S.KAIKKI_FR),
-            "bytes": S.KAIKKI_FR.stat().st_size,
-            "lines": sum(1 for _ in open(S.KAIKKI_FR, encoding="utf-8")),
-        },
-        "lexique": {
-            "from": str(S.LEXIQUE_FROM),
-            "sha256": digest(S.LEXIQUE),
-            "bytes": S.LEXIQUE.stat().st_size,
-        },
-        "verbiste": {
-            "from": str(S.VERBISTE_FROM),
-            "verbs-fr.xml": digest(S.VERBS),
-            "conjugations-fr.xml": digest(S.CONJUGATIONS),
-        },
-    }
+    # Anglais : les irréguliers et la fréquence.
+    fetch_wordnet(force)
+    download(S.SUBTLEX_URL, S.SUBTLEX, force)
+    lock["wordnet"] = {n: digest(S.WORDNET_EXC / f"{n}.exc")
+                       for n in ("noun", "verb", "adj", "adv")}
+    lock["frequence-en"] = {"url": S.SUBTLEX_URL, "sha256": digest(S.SUBTLEX)}
+
     S.LOCK.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n",
                       encoding="utf-8")
-    print(f"\n  sources.lock écrit — {lock['kaikki-fr']['lines']} lignes kaikki")
+    print(f"\n  sources.lock écrit")
+    for code in S.LANGS:
+        print(f"    kaikki-{code} : {lock[f'kaikki-{code}']['lines']:,} lignes")
 
 
 if __name__ == "__main__":

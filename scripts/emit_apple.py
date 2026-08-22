@@ -27,10 +27,9 @@ import collections
 import hashlib
 import html
 import json
+import sys
 
 import sources as S
-
-OUT = S.ROOT / "src" / "phap-viet.xml"
 
 HEADER = ('<?xml version="1.0" encoding="UTF-8"?>\n'
           '<d:dictionary xmlns="http://www.w3.org/1999/xhtml" '
@@ -95,7 +94,7 @@ def blocks_html(entry, indent="    "):
                 for ex in sense["examples"]:
                     vi = (f'<span class="ex-vi">{e(ex["vi"])}</span>'
                           if ex.get("vi") else "")
-                    p.append(f'{indent}        <li><span class="ex-fr">{e(ex["fr"])}</span>{vi}</li>')
+                    p.append(f'{indent}        <li><span class="ex-src">{e(ex["src"])}</span>{vi}</li>')
                 p.append(f'{indent}      </ul>')
             p.append(f'{indent}    </li>')
         p.append(f'{indent}  </ol>')
@@ -203,10 +202,60 @@ def plan_keys(lexicon):
     return keys
 
 
+PLIST = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>English</string>
+	<key>CFBundleDisplayName</key><string>{name}</string>
+	<key>CFBundleIdentifier</key><string>{identifier}</string>
+	<key>CFBundleName</key><string>{name}</string>
+	<key>CFBundleShortVersionString</key><string>0.2</string>
+	<key>DCSDictionaryCopyright</key><string>{credits}</string>
+	<key>DCSDictionaryManufacturerName</key><string>Huy</string>
+	<key>DCSDictionaryNativeDisplayName</key><string>{name}</string>
+
+	<!-- Sans quoi la fenetre reste blanche en theme sombre et le
+	     prefers-color-scheme de la CSS ne sert a rien. -->
+	<key>DCSDictionaryUseSystemAppearance</key><true/>
+
+	<!-- Aucune langue declaree, et ce n'est pas un oubli. Mesure dans
+	     conjugaison sur cinq variantes installees cote a cote : les trois sans
+	     langue declaree sortaient en tete de la fenetre de consultation, les
+	     deux qui declaraient « fr » en queue. Declarer la langue ne conditionne
+	     pas la visibilite : elle degrade le classement.
+\t     (Pas de double tiret dans ce commentaire : XML l'interdit, et
+\t     le DDK s'arrete dessus.) -->
+</dict>
+</plist>
+"""
+
+
+def write_plist(code, cfg):
+    """Le plist est engendre, pas ecrit a la main.
+
+    Deux dictionnaires veulent deux plists qui ne different que par trois
+    chaines, et ces trois chaines sont deja dans sources.py. Les recopier serait
+    la garantie qu'un jour l'un cite une source que l'autre a cessé d'utiliser.
+    """
+    path = S.ROOT / "src" / f"Info-{code}.plist"
+    path.write_text(PLIST.format(
+        name=cfg["name"], identifier=cfg["identifier"],
+        credits=html.escape(" · ".join(cfg["credits"]), quote=False),
+    ), encoding="utf-8")
+    return path
+
+
 def main():
+    argv = sys.argv[1:]
+    code = argv[argv.index("--lang") + 1] if "--lang" in argv else "fr"
+    cfg = S.lang(code)
+    OUT = S.ROOT / "src" / f"{code}.xml"
+
     lexicon = [json.loads(l) for l in
-               open(S.BUILD / "lexicon.jsonl", encoding="utf-8") if l.strip()]
-    forms_index = json.load(open(S.BUILD / "forms.json", encoding="utf-8"))
+               open(S.BUILD / f"lexicon-{code}.jsonl", encoding="utf-8") if l.strip()]
+    forms_index = json.load(open(S.BUILD / f"forms-{code}.json", encoding="utf-8"))
+    write_plist(code, cfg)
 
     keys = plan_keys(lexicon)
     ambiguous = {k: v for k, v in keys.items() if len(v) > 1}
@@ -258,13 +307,15 @@ def main():
         n_edits = sum(1 for x in lexicon if x.get("edited"))
         f.write('<d:entry id="e_about" d:title="về từ điển này">\n')
         f.write('  <d:index d:value="về từ điển này" d:title="về từ điển này"/>\n')
-        f.write('  <d:index d:value="Pháp-Việt" d:title="về từ điển này"/>\n')
-        f.write('  <div class="entry"><h1 class="headword">Pháp–Việt</h1>\n')
+        f.write(f'  <d:index d:value="{html.escape(cfg["bundle"])}" '
+                f'd:title="về từ điển này"/>\n')
+        f.write(f'  <div class="entry"><h1 class="headword">{e(cfg["name"])}</h1>\n')
         f.write(f'    <div class="about"><div>{len(seen) + len(ambiguous)} mục từ · {n_keys} khoá '
                 f'· {n_edits} sửa tay</div>\n')
         f.write(f'    <div>Dựng lúc {stamp}</div>\n')
-        f.write(f'    <div>kaikki sha256 {e(lock.get("kaikki-fr", {}).get("sha256", "?")[:12])}</div>\n')
-        for credit in S.ATTRIBUTION.values():
+        f.write(f'    <div>kaikki sha256 '
+                f'{e(lock.get(f"kaikki-{code}", {}).get("sha256", "?")[:12])}</div>\n')
+        for credit in cfg["credits"]:
             f.write(f'    <div class="credit">{e(credit)}</div>\n')
         f.write('    </div></div>\n</d:entry>\n')
         f.write("</d:dictionary>\n")

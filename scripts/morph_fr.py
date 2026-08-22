@@ -25,6 +25,8 @@ et d:value n'accepte pas l'espace. Ils ne sont pas perdus pour autant — leurs
 deux morceaux, l'auxiliaire et le participe, sont chacun des formes simples.
 """
 
+import collections
+import csv
 import xml.etree.ElementTree as ET
 
 import sources as S
@@ -117,20 +119,140 @@ def paradigm(infinitive, template_name, templates):
     return out
 
 
-def build(headwords):
-    """Les paradigmes des verbes qui sont des vedettes -> [(forme, lemme, code, accord)].
+# --- l'analyse lisible ------------------------------------------------------
 
-    On ne fabrique que ce qui mène quelque part. Le paradigme d'un verbe absent
+MODES = {
+    "ind": "indicatif", "sub": "subjonctif", "cnd": "conditionnel",
+    "imp": "impératif", "inf": "infinitif", "par": "participe",
+}
+TEMPS = {
+    "pre": "présent", "imp": "imparfait", "pas": "passé simple", "fut": "futur",
+}
+PERSONNES = {
+    "1s": "ngôi 1 số ít", "2s": "ngôi 2 số ít", "3s": "ngôi 3 số ít",
+    "1p": "ngôi 1 số nhiều", "2p": "ngôi 2 số nhiều", "3p": "ngôi 3 số nhiều",
+}
+GENRE = {"m": "giống đực", "f": "giống cái"}
+NOMBRE = {"s": "số ít", "p": "số nhiều"}
+
+
+def de(mot):
+    """« de » devant un mot : élision sur voyelle, sinon « du ».
+
+    Sans ça on écrit « présent du impératif », qui n'est pas du français.
+    """
+    return f"de l'{mot}" if mot[0] in "aeiouâêîôûéèh" else f"du {mot}"
+
+
+def analyse_verbe(code):
+    """« ind:imp:1p » -> « imparfait de l'indicatif · ngôi 1 số nhiều »."""
+    parts = code.split(":")
+    if not parts:
+        return None
+    mode = MODES.get(parts[0])
+    if mode is None:
+        return None
+    if parts[0] == "inf":
+        return "infinitif"
+    # « par:pas » est le participe *passé*, pas le passé simple. Le même code
+    # « pas » veut dire deux choses selon le mode, et les confondre donnait
+    # « bu : participe passé simple » — une case qui n'existe pas.
+    if parts[0] == "par":
+        temps = {"pas": "passé", "pre": "présent"}.get(parts[1]) if len(parts) > 1 else None
+        return f"participe {temps}" if temps else "participe"
+    temps = TEMPS.get(parts[1]) if len(parts) > 1 else None
+    label = f"{temps} {de(mode)}" if temps else mode
+    personne = PERSONNES.get(parts[2]) if len(parts) > 2 else None
+    return f"{label} · {personne}" if personne else label
+
+
+def analyse_code(code, accord=None):
+    label = analyse_verbe(code)
+    return f"{label} · {accord}" if label and accord else label
+
+
+def analyse_lexique(row):
+    """La ligne Lexique -> ses analyses, une par élément.
+
+    Une liste et non une phrase : Lexique répartit les analyses d'une même forme
+    sur plusieurs lignes homographes, et joindre trop tôt donnait deux lignes
+    dont l'une répétait l'autre.
+    """
+    bits = [GENRE.get(row["genre"]), NOMBRE.get(row["nombre"])]
+    joined = " ".join(b for b in bits if b)
+    return [joined] if joined else []
+
+
+# --- Lexique : les noms, les adjectifs, et la fréquence ---------------------
+
+def load_lexique():
+    """(formes non verbales, fréquence par lemme).
+
+    Les formes *verbales* n'en sortent pas. Lexique n'atteste que ce que ses
+    corpus contiennent — 10,1 formes par verbe sur les ~45 d'un paradigme, 56 %
+    des verbes sous les dix formes — et il range en prime la forme « allier »
+    sous le lemme « aller ». Verbiste les engendre toutes, et justes.
+    """
+    forms = collections.defaultdict(list)
+    freq = {}
+    with open(S.LEXIQUE, encoding="utf-8") as f:
+        for row in csv.DictReader(f, delimiter="\t"):
+            ortho, lemme = row["ortho"].strip(), row["lemme"].strip()
+            if not ortho or not lemme:
+                continue
+            try:
+                f2 = float(row["freqlemfilms2"] or 0)
+                fl = float(row["freqlemlivres"] or 0)
+            except ValueError:
+                f2 = fl = 0.0
+            # La fréquence est prise sur toutes les lignes, verbes compris :
+            # c'est elle qui ordonne le dictionnaire, et elle est bonne.
+            freq[lemme] = max(freq.get(lemme, 0.0), (f2 + fl) / 2)
+            if row["cgram"] in ("VER", "AUX"):
+                continue
+            if ortho != lemme:
+                forms[ortho].append((lemme, analyse_lexique(row)))
+    return forms, freq
+
+
+def frequency():
+    return load_lexique()[1]
+
+
+def build(entries_by_head):
+    """{vedette: [lignes kaikki]} -> ([(forme, lemme, analyse)], compteurs).
+
+    On ne fabrique que ce qui mène quelque part : le paradigme d'un verbe absent
     du dictionnaire produirait des clés vers une page qui n'existe pas.
     """
+    heads = set(entries_by_head)
+    out = []
+    merged = collections.defaultdict(lambda: collections.defaultdict(dict))
+
+    # 1. Verbiste : les paradigmes complets.
     templates = load_templates()
     verbs = load_verbs()
-    out = []
-    covered = 0
+    n_verbs = 0
     for infinitive, template_name in verbs.items():
-        if infinitive not in headwords:
+        if infinitive not in heads:
             continue
-        covered += 1
+        n_verbs += 1
         for form, code, accord in paradigm(infinitive, template_name, templates):
-            out.append((form, infinitive, code, accord))
-    return out, covered, len(verbs)
+            if form != infinitive:
+                merged[form][infinitive].update(
+                    dict.fromkeys([analyse_code(code, accord)]))
+
+    # 2. Lexique : les noms et les adjectifs.
+    lexique_forms, _ = load_lexique()
+    n_lexique = 0
+    for form, targets in lexique_forms.items():
+        for lemme, labels in targets:
+            if lemme in heads:
+                n_lexique += 1
+                merged[form][lemme].update(dict.fromkeys(labels))
+
+    for form, targets in merged.items():
+        for lemme, labels in targets.items():
+            out.append((form, lemme, ", ".join(l for l in labels if l) or None))
+
+    return out, {"verbiste": n_verbs, "lexique": n_lexique}

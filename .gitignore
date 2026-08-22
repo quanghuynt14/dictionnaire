@@ -6,8 +6,9 @@ data/sources/
 build/
 objects/
 objects-build.log
-src/phap-viet.xml
 tools/dictionary-development-kit/
 
 .DS_Store
 __pycache__/
+src/*.xml
+src/Info-*.plist

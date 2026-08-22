@@ -17,16 +17,25 @@ import xml.etree.ElementTree as ET
 
 import sources as S
 
-XML = S.ROOT / "src" / "phap-viet.xml"
+
 D = "{http://www.apple.com/DTDs/DictionaryService-1.0.rng}"
 X = "{http://www.w3.org/1999/xhtml}"
 
 # Ce qu'un dictionnaire français doit savoir faire, et que rien ne garantit :
 # une forme fléchie très éloignée du lemme, un radical supplétif, un participe
 # irrégulier, un pluriel, un féminin, et la vedette nue.
-DEFAULT_FORMS = ["allions", "allie", "prises", "assises", "irions", "vécu",
-                 "eu", "sois", "meilleures", "chats", "payions", "fussions",
-                 "aller", "allier", "langue", "beau"]
+# Ce qu'un dictionnaire doit savoir faire, et que rien ne garantit : une forme
+# très éloignée du lemme, un radical supplétif, un irrégulier, un pluriel, et
+# la vedette nue. Les formes ambiguës y sont pour la raison qui a fait écrire
+# les pages de forme : une clé mène à plusieurs mots, et tous doivent sortir.
+PROBES = {
+    "fr": ["allions", "allie", "prises", "assises", "irions", "vécu", "eu",
+           "sois", "meilleures", "chats", "payions", "fussions", "aller",
+           "allier", "langue", "beau"],
+    "en": ["went", "children", "feet", "mice", "was", "ran", "better",
+           "stopped", "carried", "going", "left", "saw", "book", "run",
+           "good", "lying"],
+}
 
 
 def entries_of(xml):
@@ -39,11 +48,16 @@ def entries_of(xml):
 
 
 def main():
+    argv = sys.argv[1:]
+    code = argv[argv.index("--lang") + 1] if "--lang" in argv else "fr"
+    rest = [a for i, a in enumerate(argv)
+            if a != "--lang" and (i == 0 or argv[i - 1] != "--lang")]
+    XML = S.ROOT / "src" / f"{code}.xml"
     if not XML.exists():
-        sys.exit(f"{XML} absent. Lancez d'abord `make xml`.")
+        sys.exit(f"{XML} absent. Lancez d'abord `make xml LANG={code}`.")
 
-    forms_index = json.load(open(S.BUILD / "forms.json", encoding="utf-8"))
-    wanted = set(sys.argv[1:] or DEFAULT_FORMS)
+    forms_index = json.load(open(S.BUILD / f"forms-{code}.json", encoding="utf-8"))
+    wanted = set(rest or PROBES[code])
 
     problems = []
     ids = {}
@@ -110,7 +124,7 @@ def main():
     # sur la page « brillant » qui porte les deux. Ce qu'on refuse, c'est le mot
     # que plus rien n'atteint.
     lexicon_heads = {json.loads(l)["headword"]
-                     for l in open(S.BUILD / "lexicon.jsonl", encoding="utf-8")
+                     for l in open(S.BUILD / f"lexicon-{code}.jsonl", encoding="utf-8")
                      if l.strip()}
     orphans = sorted(lexicon_heads - reachable)
     if orphans:

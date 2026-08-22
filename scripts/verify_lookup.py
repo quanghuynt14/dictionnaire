@@ -20,14 +20,24 @@ import unicodedata
 
 import sources as S
 
-BUNDLE = pathlib.Path.home() / "Library/Dictionaries/Pháp-Việt.dictionary"
-# « allions » et « prises » sont là pour la raison qui a fait ajouter Verbiste :
-# une forme mène à plusieurs verbes, et les deux doivent sortir. « allie » y est
-# pour le pliage des accents, qui ramène « allié » en plus — comportement voulu
-# qu'un vérificateur naïf prend pour une panne.
-DEFAULT_FORMS = ["allions", "allie", "prises", "assises", "irions", "vécu",
-                 "eu", "sois", "meilleures", "chats", "payions", "fussions",
-                 "aller", "allier", "langue", "beau"]
+# Ce qu'un dictionnaire doit savoir faire, et que rien ne garantit.
+#
+# Français : « allions » et « prises » mènent à plusieurs mots — c'est ce qui a
+# fait ajouter Verbiste puis les pages de forme ambiguë. « allie » y est pour le
+# pliage des accents, qui ramène « allié » en plus : comportement voulu qu'un
+# vérificateur naïf prend pour une panne.
+#
+# Anglais : les irréguliers que WordNet rattrape et qu'UniMorph ratait — went,
+# children, feet, mice, was, ran — et les homographes, qui y sont bien plus
+# nombreux qu'en français : saw est see et saw, left est leave et left.
+PROBES = {
+    "fr": ["allions", "allie", "prises", "assises", "irions", "vécu", "eu",
+           "sois", "meilleures", "chats", "payions", "fussions", "aller",
+           "allier", "langue", "beau"],
+    "en": ["went", "children", "feet", "mice", "was", "ran", "better",
+           "stopped", "carried", "going", "left", "saw", "book", "run",
+           "good", "lying"],
+}
 
 cf = ctypes.CDLL(ctypes.util.find_library("CoreFoundation"))
 cs = ctypes.CDLL(ctypes.util.find_library("CoreServices"))
@@ -111,21 +121,28 @@ def active_identifiers():
 
 
 def main():
-    if not BUNDLE.exists():
-        sys.exit(f"{BUNDLE} absent. Lancez `make install`.")
+    argv = sys.argv[1:]
+    code = argv[argv.index("--lang") + 1] if "--lang" in argv else "fr"
+    rest = [a for i, a in enumerate(argv)
+            if a != "--lang" and (i == 0 or argv[i - 1] != "--lang")]
+    cfg = S.lang(code)
 
-    identifier = plistlib.loads(
-        (S.ROOT / "src" / "Info.plist").read_bytes())["CFBundleIdentifier"]
+    bundle = pathlib.Path.home() / "Library/Dictionaries" / \
+        f"{cfg['bundle']}.dictionary"
+    if not bundle.exists():
+        sys.exit(f"{bundle} absent. Lancez `make install LANG={code}`.")
+
+    identifier = cfg["identifier"]
     dictionary = find_dictionary(identifier)
     if not dictionary:
         sys.exit(f"« {identifier} » n'est pas dans la liste du système. Le bundle "
                  "est installé mais macOS ne l'a pas indexé : relancez Dictionary.app.")
 
     lexicon = {}
-    for line in open(S.BUILD / "lexicon.jsonl", encoding="utf-8"):
+    for line in open(S.BUILD / f"lexicon-{code}.jsonl", encoding="utf-8"):
         entry = json.loads(line)
         lexicon[entry["headword"]] = entry
-    forms_index = json.load(open(S.BUILD / "forms.json", encoding="utf-8"))
+    forms_index = json.load(open(S.BUILD / f"forms-{code}.json", encoding="utf-8"))
 
     # Les formes ambiguës, recalculées exactement comme l'émetteur les calcule :
     # une clé portée par plus d'une entrée.
@@ -153,7 +170,7 @@ def main():
                         "dégradant le classement")
     print()
 
-    for form in sys.argv[1:] or DEFAULT_FORMS:
+    for form in rest or PROBES[code]:
         records = cs.DCSCopyRecordsForSearchString(dictionary, cfstr(form), None, None)
         count = cf.CFArrayGetCount(records) if records else 0
         if not count:

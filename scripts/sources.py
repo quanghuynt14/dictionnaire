@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""Où sont les sources, et ce qu'on en attend.
+"""Où sont les sources, ce qu'on en attend, et sous quelle licence.
 
-Un seul endroit pour les URL, les chemins et les licences. Le reste du
-pipeline importe d'ici et ne connaît aucune adresse.
+Un seul endroit pour les URL, les chemins et les crédits. Le reste du pipeline
+importe d'ici et ne connaît aucune adresse.
+
+Deux dictionnaires en sortent — Pháp–Việt et Anh–Việt. Ils partagent tout le
+code et rien de leurs sources : c'est `LANGS` qui les sépare, et c'est le seul
+endroit où la différence est écrite.
 """
 
 import pathlib
@@ -10,38 +14,74 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SOURCES = ROOT / "data" / "sources"
 BUILD = ROOT / "build"
-
-# L'extraction de kaikki.org : le Wiktionnaire vietnamien, section « Tiếng Pháp ».
-# C'est-à-dire des vedettes françaises glosées en vietnamien — exactement le sens
-# de traduction qu'on veut, écrit par des humains, et déjà en JSON.
-KAIKKI_FR_URL = (
-    "https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Ph%C3%A1p/"
-    "kaikki.org-dictionary-Ti%E1%BA%BFngPh%C3%A1p.jsonl"
-)
-KAIKKI_FR = SOURCES / "kaikki-fr.jsonl"
-
-# Lexique 3.83. Il ne donne pas un mot de vietnamien : il donne la morphologie,
-# c'est-à-dire la seule chose qui sépare un dictionnaire d'une liste de vedettes.
-# « allions » n'est pas dans le Wiktionnaire ; il est ici, avec son lemme et son
-# analyse. Le fichier vient déjà du dépôt conjugaison, on le recopie.
-LEXIQUE = SOURCES / "Lexique383.tsv"
-LEXIQUE_FROM = ROOT.parent / "conjugaison" / "data" / "sources" / "Lexique383.tsv"
-
-# Verbiste. Lexique n'atteste que ce que ses corpus contiennent — dix formes par
-# verbe en moyenne, sur les quarante-cinq d'un paradigme. Verbiste les *engendre*
-# depuis cent quarante-six modèles, ce qui est la seule façon d'avoir « allions »
-# sous allier comme sous aller. Les deux fichiers viennent aussi de conjugaison.
-VERBS = SOURCES / "verbs-fr.xml"
-CONJUGATIONS = SOURCES / "conjugations-fr.xml"
-VERBISTE_FROM = ROOT.parent / "conjugaison" / "data" / "sources"
-
 LOCK = ROOT / "data" / "sources.lock"
 
-# Ce qui doit apparaître dans le bundle et sur le site. CC BY-SA veut dire deux
-# choses : on cite, et ce qu'on en dérive se repartage aux mêmes conditions.
-ATTRIBUTION = {
-    "kaikki": "Wiktionnaire vietnamien (vi.wiktionary.org), extrait par "
-              "wiktextract / kaikki.org — CC BY-SA 4.0",
-    "lexique": "Lexique 3.83 (lexique.org), Boris New & Christophe Pallier — CC BY-SA 4.0",
-    "verbiste": "Verbiste, Pierre Sarrazin (sarrazip.com), via verbecc de Brett Tolbert — GPL v2",
+# Les deux fichiers Verbiste et Lexique viennent du dépôt voisin plutôt que du
+# réseau : conjugaison les a déjà, et les deux projets doivent parler de la même
+# morphologie. Deux copies d'un même fichier qui divergent, c'est un bug qu'on
+# ne verrait jamais.
+CONJUGAISON = ROOT.parent / "conjugaison" / "data" / "sources"
+
+LANGS = {
+    "fr": {
+        "name": "Pháp–Việt",
+        "bundle": "Pháp-Việt",
+        "identifier": "fr.huy.phap-viet",
+        # La section « Tiếng Pháp » du Wiktionnaire vietnamien : des vedettes
+        # françaises glosées en vietnamien, écrites par des humains, déjà en JSON.
+        "kaikki_url": ("https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Ph%C3%A1p/"
+                       "kaikki.org-dictionary-Ti%E1%BA%BFngPh%C3%A1p.jsonl"),
+        "kaikki": SOURCES / "kaikki-fr.jsonl",
+        "morphology": "morph_fr",
+        "credits": [
+            "Wiktionnaire vietnamien (vi.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "Verbiste, Pierre Sarrazin (sarrazip.com), via verbecc de "
+            "Brett Tolbert — GPL v2",
+            "Lexique 3.83 (lexique.org), Boris New & Christophe Pallier — CC BY-SA 4.0",
+        ],
+    },
+    "en": {
+        "name": "Anh–Việt",
+        "bundle": "Anh-Việt",
+        "identifier": "fr.huy.anh-viet",
+        "kaikki_url": ("https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Anh/"
+                       "kaikki.org-dictionary-Ti%E1%BA%BFngAnh.jsonl"),
+        "kaikki": SOURCES / "kaikki-en.jsonl",
+        "morphology": "morph_en",
+        "credits": [
+            "Wiktionnaire vietnamien (vi.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "WordNet 3.0, Princeton University — licence WordNet",
+            "SUBTLEX-US, Brysbaert & New — usage libre pour la recherche",
+        ],
+    },
 }
+
+# --- morphologie française --------------------------------------------------
+
+LEXIQUE = SOURCES / "Lexique383.tsv"
+VERBS = SOURCES / "verbs-fr.xml"
+CONJUGATIONS = SOURCES / "conjugations-fr.xml"
+
+# --- morphologie anglaise ---------------------------------------------------
+
+# Les listes d'exceptions de WordNet : les irréguliers, à la main, et justes.
+# Mesuré contre UniMorph, qui a l'air plus gros et qui rate « children », « was »,
+# « feet », « geese », et range « ran » sous « rin ».
+WORDNET_EXC = SOURCES / "wordnet-exc"
+WORDNET_URL = ("https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/"
+               "packages/corpora/wordnet.zip")
+
+# SUBTLEX-US : la fréquence qui ordonne le dictionnaire anglais, comme Lexique
+# ordonne le français. Même corpus de sous-titres, même idée.
+SUBTLEX = SOURCES / "subtlex-us.txt"
+SUBTLEX_URL = ("https://raw.githubusercontent.com/hermitdave/FrequencyWords/"
+               "master/content/2018/en/en_full.txt")
+
+
+def lang(code):
+    if code not in LANGS:
+        raise SystemExit(f"langue inconnue « {code} » — attendu : "
+                         f"{', '.join(LANGS)}")
+    return LANGS[code]

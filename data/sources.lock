@@ -5,14 +5,28 @@
     "bytes": 45689340,
     "lines": 51737
   },
+  "kaikki-en": {
+    "url": "https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Anh/kaikki.org-dictionary-Ti%E1%BA%BFngAnh.jsonl",
+    "sha256": "c0a4d297d3b00774840c4d081ab35a509aeb4e10ddb1487a7a7288396a2f0677",
+    "bytes": 114389902,
+    "lines": 133394
+  },
   "lexique": {
-    "from": "/Users/quang-huy.tran/Documents/dev/projects/conjugaison/data/sources/Lexique383.tsv",
-    "sha256": "637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b",
-    "bytes": 25850780
+    "from": "/Users/quang-huy.tran/Documents/dev/projects/conjugaison/data/sources",
+    "sha256": "637ba37a767a66679c48371d673ece50cbf541b49a4e40e598963d4f3fbce52b"
   },
   "verbiste": {
-    "from": "/Users/quang-huy.tran/Documents/dev/projects/conjugaison/data/sources",
-    "verbs-fr.xml": "f51b0a868f63036313f13e97d7eeca8ff5a0c3d4ffabfbe4b46150af379c0042",
-    "conjugations-fr.xml": "98794bd4ae37fcf0f776afc9bbf6427b927a6999bb97e13fc2cf5125fe6891f9"
+    "verbs": "f51b0a868f63036313f13e97d7eeca8ff5a0c3d4ffabfbe4b46150af379c0042",
+    "conjugations": "98794bd4ae37fcf0f776afc9bbf6427b927a6999bb97e13fc2cf5125fe6891f9"
+  },
+  "wordnet": {
+    "noun": "2b5d675c380b39ecf595af9fa9d4e7feb1d58c643b0bff08c40ed5bfe41fab7a",
+    "verb": "dbbcf9a601b2d77e934e413b91d90e88ec7f933a8b77cfc00602a923b891b42c",
+    "adj": "8824cc24bbedd797b9702316b27f07cd4c2b76b629539f0a1276f03926758016",
+    "adv": "e7291461b629abfe63301bbe1998cee09fd575ed7107abd7ea9763adb05bf0a8"
+  },
+  "frequence-en": {
+    "url": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_full.txt",
+    "sha256": "7fea67ab954e2c01df6c608c9826e594cf36f8823b3243554f88245fb75dc506"
   }
 }
