@@ -16,9 +16,9 @@ Il sort par deux portes, du même fichier :
 **Phase 0.** La chaîne complète marche, sur tout le dump.
 
 ```
-45 987 entrées · 79 303 sens · 45 995 exemples traduits
-240 137 formes fléchies · 291 080 clés · XML de 52 Mo · bundle de 54 Mo
-normalisation 4 s · compilation DDK 1 min 25
+45 987 vedettes · 10 355 pages de forme ambiguë · 79 303 sens
+45 995 exemples traduits · 240 137 formes fléchies · 280 436 clés
+XML de 70 Mo · bundle de 62 Mo · normalisation 4 s · compilation DDK 2 min
 ```
 
 Ce qui est fait : récupération et verrouillage des sources, normalisation,
@@ -120,7 +120,36 @@ Apple sait faire, et `d:title` décide de l'étiquette dans la liste de résulta
 « allions (aller) ».
 
 Ce que ça coûte : conjugaison produit 580 Mo de XML pour 2 000 verbes, parce que
-chaque forme réémet le paradigme. Ici, 7,4 Mo pour 2 987 vedettes et 27 259 clés.
+chaque forme réémet le paradigme. Ici, 70 Mo pour 46 000 vedettes.
+
+### Sauf pour les formes ambiguës, qui ont leur page
+
+Une exception, et elle vient d'une mesure. La **fenêtre de survol** — ⌃⌘D, celle
+qu'on utilise vraiment — ne rend qu'**une entrée par dictionnaire**.
+`DCSCopyRecordsForSearchString` rendait bien les deux enregistrements de
+« allions » ; `DCSCopyTextDefinition`, qui est ce que la fenêtre appelle, n'en
+rendait qu'un — aller, parce qu'il sort le premier du fichier. La liste de
+Dictionary.app montrait les deux mots. Le survol, jamais.
+
+C'est la limite du découpage par vedette, et c'est exactement celle que
+conjugaison contourne en découpant par forme : « le haut de la page ne peut pas
+savoir quelle forme vous avez tapée ». On applique donc ce découpage-là, mais
+seulement aux **3,7 % de clés qui en ont besoin** : une page par forme ambiguë,
+qui possède la clé seule et rassemble tous les mots qu'elle atteint.
+
+```
+allions          2 mots
+  aller          imparfait de l'indicatif · ngôi 1 số nhiều…
+                 Đi.  « Aller à pied » — đi bộ
+  allier         présent de l'indicatif · ngôi 1 số nhiều…
+                 Pha, trộn (để chế hợp kim).  « Allier l'or avec l'argent »
+```
+
+10 355 pages, 5 020 vedettes absorbées, et le corps duplique 9,4 Mo. Les 96,3 %
+restants ne bougent pas : leur clé reste sur la vedette, leur corps n'est écrit
+qu'une fois. Depuis, **une clé n'appartient qu'à une entrée** — c'est ce que
+`make check` vérifie, avec la contrepartie qu'aucune vedette ne doit devenir
+inatteignable.
 
 Les tableaux de conjugaison ne sont pas recopiés. Ils sont déjà installés sur la
 même machine, dans « Conjugaison française », et la page renvoie à lui.

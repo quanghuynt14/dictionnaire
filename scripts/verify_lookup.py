@@ -9,6 +9,7 @@ d'Apple et un index trie que personne ne relit à l'œil.
 Usage :  python3 scripts/verify_lookup.py [forme…]
 """
 
+import collections
 import ctypes
 import ctypes.util
 import json
@@ -126,6 +127,16 @@ def main():
         lexicon[entry["headword"]] = entry
     forms_index = json.load(open(S.BUILD / "forms.json", encoding="utf-8"))
 
+    # Les formes ambiguës, recalculées exactement comme l'émetteur les calcule :
+    # une clé portée par plus d'une entrée.
+    reach = collections.defaultdict(set)
+    for entry in lexicon.values():
+        reach[entry["headword"]].add(entry["headword"])
+        for f in entry.get("forms", []):
+            if f != entry["headword"]:
+                reach[f].add(entry["headword"])
+    ambiguous = {k for k, v in reach.items() if len(v) > 1}
+
     problems = []
     print(f"  {pystr(cs.DCSDictionaryGetName(dictionary))}  [{identifier}]")
 
@@ -165,7 +176,11 @@ def main():
         #
         # On reconstruit donc les étiquettes qu'on a nous-mêmes écrites, et
         # c'est le corps de la page, plus bas, qui sert de vraie preuve.
-        labels = {h for h in expected} | {f"{form} ({h})" for h in expected}
+        # Et l'étiquette de la page de forme ambiguë, qui est la forme nue :
+        # « allions » possède désormais sa clé seule, donc le bundle ne répond
+        # plus « allions (aller) » mais « allions ».
+        labels = ({h for h in expected} | {f"{form} ({h})" for h in expected}
+                  | ({form} if form in ambiguous else set()))
         # Les clés supplémentaires du DDK plient les accents, pour que « vecu »
         # trouve « vécu ». L'effet de bord est qu'une recherche ramène ses
         # voisins sans accents : c'est utile, pas faux.
@@ -189,20 +204,17 @@ def main():
         text = pystr(cs.DCSCopyTextDefinition(dictionary, cfstr(form),
                                               CFRange(0, len(form)))) or ""
 
-        # Les vedettes que cette clé atteint, lues sur ce que le bundle a
-        # *répondu* plutôt que sur ce qu'on avait prévu. Une étiquette est soit
-        # « X », soit « X (Y) » — la seconde forme nomme la vedette en Y.
+        # Une forme ambiguë a maintenant sa propre page, qui porte la clé
+        # seule. Le bundle rend donc une étiquette « allions » et non plus
+        # « allions (aller) », et la page contient les deux mots.
         #
-        # Les déduire de notre propre index était trop étroit : le DDK ajoute
-        # des clés sans diacritiques pour que « vecu » trouve « vécu », et
-        # « allie » ramène donc aussi « allié », qui est une vedette à part
-        # entière. C'est la fonctionnalité qui marche, pas une panne — mais le
-        # vérificateur la signalait comme telle.
+        # C'est le cas qu'on veut vraiment vérifier : la fenêtre de survol ne
+        # rend qu'une page, et c'est sur elle que doivent se trouver toutes les
+        # réponses. On exige donc que **chaque** lemme attendu ait sa première
+        # glose dans le texte — pas un seul d'entre eux.
         def headword_of(label):
             return label[label.rindex("(") + 1:-1] if label.endswith(")") \
                 and "(" in label else label
-
-        candidates = list(dict.fromkeys(headword_of(h) for h in headwords))
 
         def first_gloss(head):
             entry = lexicon.get(head)
@@ -210,27 +222,41 @@ def main():
                 return entry["blocks"][0]["senses"][0]["gloss"]
             return None
 
+        merged = form in ambiguous
+        mark = "✓"
+
+        if merged:
+            missing = [h for h in sorted(expected)
+                       if first_gloss(h) and first_gloss(h) not in text]
+            if missing:
+                problems.append(
+                    f"« {form} » : page de forme ambiguë incomplète — il manque "
+                    f"la glose de {', '.join(missing)}")
+                mark = "✗"
+            for head in sorted(expected):
+                how = next((x["analysis"] for x in forms_index.get(form, [])
+                            if x["lemma"] == head), None)
+                via = f"   {how}" if how and form != head else ""
+                print(f"  {mark} « {form} » → {head}   {first_gloss(head) or ''}{via}")
+            continue
+
+        # Cas ordinaire : une clé, une vedette. Les vedettes atteintes se lisent
+        # sur ce que le bundle a répondu, pas sur notre index — le DDK ajoute
+        # des clés sans diacritiques, et « allie » ramène aussi « allié ».
+        candidates = list(dict.fromkeys(headword_of(h) for h in headwords))
         glosses = {h: first_gloss(h) for h in candidates}
         hit = next((h for h, g in glosses.items() if g and g in text), None)
-
-        mark = "✓"
         if not hit and any(glosses.values()):
             problems.append(
                 f"« {form} » : la page rendue ne contient la première glose "
                 f"d'aucune des vedettes atteintes ({', '.join(candidates)})")
             mark = "✗"
 
-        # Toutes les vedettes attendues, pas une prise au hasard dans l'ensemble.
-        # « allions » mène à aller *et* à allier, et n'en afficher qu'une donnait
-        # une sortie qui avait l'air d'une réponse unique.
         for head in sorted(expected):
             how = next((x["analysis"] for x in forms_index.get(form, [])
                         if x["lemma"] == head), None)
             via = f"   {how}" if how and form != head else ""
             print(f"  {mark} « {form} » → {head}   {glosses.get(head) or ''}{via}")
-        # Les vedettes atteintes en plus : par pliage des accents, ou parce que
-        # la forme est elle-même une vedette. C'est là que la liste de résultats
-        # de Dictionary.app affiche plusieurs lignes, et c'est voulu.
         extra = [h for h in candidates if h not in expected]
         if extra:
             print(f"      aussi : {', '.join(extra)}")

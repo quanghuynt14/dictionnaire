@@ -101,6 +101,45 @@
   color: #4a4a4a;
 }
 
+/* --- la page d'une forme ambiguë ---------------------------------------- */
+
+/* « allions » est nous-allions d'aller et nous-allions d'allier. La fenêtre de
+   survol ne rend qu'une entrée par dictionnaire, donc les deux doivent tenir
+   sur la même page. Le compte est en tête parce qu'à 300 px le second mot est
+   sous la ligne de flottaison : sans lui, la page a l'air d'une réponse
+   unique — exactement ce qu'on est en train de corriger. */
+.ambig {
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a6d3b;
+  margin: -0.1em 0 0.9em;
+}
+
+/* Le filet sépare deux mots, pas deux sections d'un même mot. Il est donc plus
+   marqué que tout ce qui vit à l'intérieur d'un membre. */
+.member + .member {
+  border-top: 1px solid rgba(0, 0, 0, 0.14);
+  margin-top: 1em;
+  padding-top: 0.9em;
+}
+
+.member-head {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Pourquoi cette forme mène à ce mot-là. C'est la seule ligne de la page qui
+   réponde à la question qu'on s'est posée en survolant le mot. */
+.member-how {
+  font-size: 0.8em;
+  color: #6b6b6b;
+  margin-bottom: 0.5em;
+}
+
 /* --- formes fléchies et renvois ----------------------------------------- */
 
 .forms {
@@ -164,6 +203,8 @@
   .ipa, .form-how, .forms-ref, .about { color: #9a9a9a; }
   .sub { color: #b0b0b0; }
   .ex-vi { color: #b8b8b8; }
-  .pos, .rel-label, .edited { color: #d0a85f; }
+  .pos, .rel-label, .edited, .ambig { color: #d0a85f; }
+  .member-how { color: #9a9a9a; }
+  .member + .member { border-top-color: rgba(255, 255, 255, 0.16); }
   .examples { border-left-color: rgba(208, 168, 95, 0.32); }
 }

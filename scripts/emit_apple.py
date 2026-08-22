@@ -23,6 +23,7 @@ seconde vérité à maintenir.
 Usage :  python3 scripts/emit_apple.py
 """
 
+import collections
 import hashlib
 import html
 import json
@@ -63,13 +64,43 @@ def indexes(entry, forms_index):
     une ligne « allions » et il faut cliquer pour savoir sur quel verbe on tombe.
     """
     head = entry["headword"]
-    out = [f'  <d:index d:value="{html.escape(head)}" d:title="{html.escape(head)}"/>']
+    out = [(head,
+            f'  <d:index d:value="{html.escape(head)}" d:title="{html.escape(head)}"/>')]
     for form in entry.get("forms", []):
         if form == head:
             continue
-        out.append(f'  <d:index d:value="{html.escape(form)}" '
-                   f'd:title="{html.escape(form)} ({html.escape(head)})"/>')
+        out.append((form,
+                    f'  <d:index d:value="{html.escape(form)}" '
+                    f'd:title="{html.escape(form)} ({html.escape(head)})"/>'))
     return out
+
+
+def blocks_html(entry, indent="    "):
+    """Les sections d'une entrée — sans son <h1>, pour pouvoir la rendre aussi
+    à l'intérieur d'une page de forme ambiguë."""
+    p = []
+    for block in entry["blocks"]:
+        label = block.get("pos_vi") or block.get("pos") or ""
+        p.append(f'{indent}<div class="block">')
+        if label:
+            p.append(f'{indent}  <div class="pos">{e(label)}</div>')
+        p.append(f'{indent}  <ol class="senses">')
+        for sense in block["senses"]:
+            p.append(f'{indent}    <li class="sense">')
+            p.append(f'{indent}      <span class="gloss">{e(sense["gloss"])}</span>')
+            for extra in sense.get("sub", []):
+                p.append(f'{indent}      <span class="sub">{e(extra)}</span>')
+            if sense.get("examples"):
+                p.append(f'{indent}      <ul class="examples">')
+                for ex in sense["examples"]:
+                    vi = (f'<span class="ex-vi">{e(ex["vi"])}</span>'
+                          if ex.get("vi") else "")
+                    p.append(f'{indent}        <li><span class="ex-fr">{e(ex["fr"])}</span>{vi}</li>')
+                p.append(f'{indent}      </ul>')
+            p.append(f'{indent}    </li>')
+        p.append(f'{indent}  </ol>')
+        p.append(f'{indent}</div>')
+    return p
 
 
 def body(entry, forms_index):
@@ -80,27 +111,7 @@ def body(entry, forms_index):
     if entry.get("ipa"):
         p.append(f'    <span class="ipa">{e(" ".join(entry["ipa"]))}</span>')
 
-    for block in entry["blocks"]:
-        label = block.get("pos_vi") or block.get("pos") or ""
-        p.append('    <div class="block">')
-        if label:
-            p.append(f'      <div class="pos">{e(label)}</div>')
-        p.append('      <ol class="senses">')
-        for sense in block["senses"]:
-            p.append('        <li class="sense">')
-            p.append(f'          <span class="gloss">{e(sense["gloss"])}</span>')
-            for extra in sense.get("sub", []):
-                p.append(f'          <span class="sub">{e(extra)}</span>')
-            if sense.get("examples"):
-                p.append('          <ul class="examples">')
-                for ex in sense["examples"]:
-                    vi = (f'<span class="ex-vi">{e(ex["vi"])}</span>'
-                          if ex.get("vi") else "")
-                    p.append(f'            <li><span class="ex-fr">{e(ex["fr"])}</span>{vi}</li>')
-                p.append('          </ul>')
-            p.append('        </li>')
-        p.append('      </ol>')
-        p.append('    </div>')
+    p += blocks_html(entry)
 
     # Les formes fléchies, mais seulement quand elles tiennent. Le seuil vaut
     # aussi comme test : un mot qui dépasse six formes est un verbe, et un verbe
@@ -139,22 +150,101 @@ def body(entry, forms_index):
     return p
 
 
+def merged_body(form, members, forms_index):
+    """La page d'une forme qui mène à plusieurs mots.
+
+    Pourquoi elle existe. La fenêtre de survol — ⌃⌘D, celle qu'on utilise
+    vraiment — ne rend **qu'une entrée par dictionnaire**. Mesuré :
+    DCSCopyRecordsForSearchString rend bien les deux enregistrements de
+    « allions », et DCSCopyTextDefinition n'en rend qu'un, celui d'aller, parce
+    qu'il sort le premier du fichier. La liste de Dictionary.app montrait les
+    deux ; le survol, jamais.
+
+    C'est la limite du découpage par vedette, et c'est exactement celle que
+    conjugaison contourne en découpant par forme : « le haut de la page ne peut
+    pas savoir quelle forme vous avez tapée ». Ici on n'applique ce découpage
+    qu'aux 3,7 % de clés qui en ont besoin — une page par forme ambiguë, qui
+    possède la clé et rassemble tous les mots qu'elle atteint.
+
+    Les autres 96,3 % ne bougent pas : leur clé reste sur la vedette, et le
+    corps n'est écrit qu'une fois.
+    """
+    p = ['  <div class="entry">',
+         f'    <h1 class="headword">{e(form)}</h1>',
+         f'    <div class="ambig">{len(members)} mots</div>']
+    for entry, how in members:
+        head = entry["headword"]
+        p.append('    <div class="member">')
+        p.append(f'      <h2 class="member-head">{e(head)}</h2>')
+        if how:
+            p.append(f'      <div class="member-how">{e(how)}</div>')
+        p += blocks_html(entry, indent="      ")
+        p.append('    </div>')
+    p.append('  </div>')
+    return p
+
+
+def plan_keys(lexicon):
+    """clé -> [(entrée, analyse)] — qui répond à quoi, avant d'écrire quoi que ce soit.
+
+    Il faut ce plan complet avant la première ligne de XML : on ne sait qu'une
+    clé est ambiguë qu'après avoir vu toutes les entrées qui la portent.
+    """
+    keys = collections.defaultdict(list)
+    for entry in lexicon:
+        head = entry["headword"]
+        keys[head].append((entry, None))
+        for form in entry.get("forms", []):
+            if form != head:
+                keys[form].append((entry, form))
+    return keys
+
+
 def main():
     lexicon = [json.loads(l) for l in
                open(S.BUILD / "lexicon.jsonl", encoding="utf-8") if l.strip()]
     forms_index = json.load(open(S.BUILD / "forms.json", encoding="utf-8"))
 
+    keys = plan_keys(lexicon)
+    ambiguous = {k: v for k, v in keys.items() if len(v) > 1}
+
     seen = set()
-    n_keys = 0
+    n_keys = n_dropped = 0
     with open(OUT, "w", encoding="utf-8") as f:
         f.write(HEADER)
+
+        # Les pages de formes ambiguës d'abord. Elles possèdent leur clé seules :
+        # la laisser aussi sur les vedettes ferait trois lignes dans la liste de
+        # résultats pour « allions », dont deux mèneraient à une moitié de la
+        # réponse.
+        for form, members in sorted(ambiguous.items()):
+            eid = "a_" + entry_id(form)[2:]
+            with_how = [(entry, next((x["analysis"]
+                                      for x in forms_index.get(form, [])
+                                      if x["lemma"] == entry["headword"]), None)
+                         if via else None)
+                        for entry, via in members]
+            f.write(f'<d:entry id="{eid}" d:title="{html.escape(form)}">\n')
+            f.write(f'  <d:index d:value="{html.escape(form)}" '
+                    f'd:title="{html.escape(form)}"/>\n')
+            n_keys += 1
+            f.write("\n".join(merged_body(form, with_how, forms_index)) + "\n")
+            f.write("</d:entry>\n")
+
         for entry in lexicon:
             eid = entry_id(entry["headword"])
             if eid in seen:
                 continue
+            idx = [line for form, line in indexes(entry, forms_index)
+                   if form not in ambiguous]
+            # Une entrée dont toutes les clés sont parties n'est plus
+            # atteignable — et n'a plus à l'être : son contenu est recopié dans
+            # les pages de forme qui ont pris ses clés.
+            if not idx:
+                n_dropped += 1
+                continue
             seen.add(eid)
             f.write(f'<d:entry id="{eid}" d:title="{html.escape(entry["headword"])}">\n')
-            idx = indexes(entry, forms_index)
             n_keys += len(idx)
             f.write("\n".join(idx) + "\n")
             f.write("\n".join(body(entry, forms_index)) + "\n")
@@ -172,7 +262,7 @@ def main():
         f.write('  <d:index d:value="về từ điển này" d:title="về từ điển này"/>\n')
         f.write('  <d:index d:value="Pháp-Việt" d:title="về từ điển này"/>\n')
         f.write('  <div class="entry"><h1 class="headword">Pháp–Việt</h1>\n')
-        f.write(f'    <div class="about"><div>{len(lexicon)} mục từ · {n_keys} khoá '
+        f.write(f'    <div class="about"><div>{len(seen) + len(ambiguous)} mục từ · {n_keys} khoá '
                 f'· {n_edits} sửa tay</div>\n')
         f.write(f'    <div>Dựng lúc {stamp}</div>\n')
         f.write(f'    <div>kaikki sha256 {e(lock.get("kaikki-fr", {}).get("sha256", "?")[:12])}</div>\n')
@@ -182,8 +272,9 @@ def main():
         f.write("</d:dictionary>\n")
 
     size = OUT.stat().st_size
-    print(f"  {len(seen)} entrées, {n_keys} clés → {OUT.relative_to(S.ROOT)} "
-          f"({size / 1e6:.1f} Mo)")
+    print(f"  {len(seen)} entrées + {len(ambiguous)} pages de forme ambiguë "
+          f"({n_dropped} entrées absorbées), {n_keys} clés")
+    print(f"  → {OUT.relative_to(S.ROOT)} ({size / 1e6:.1f} Mo)")
 
 
 if __name__ == "__main__":

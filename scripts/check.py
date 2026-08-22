@@ -49,6 +49,7 @@ def main():
     ids = {}
     keys = collections.defaultdict(list)   # clé -> [vedette…]
     found = {}
+    reachable = set()
     n_entries = n_keys = n_senses = 0
 
     for entry in entries_of(XML):
@@ -80,23 +81,41 @@ def main():
             if gloss is None or not (gloss.text or "").strip():
                 problems.append(f"« {head} » : un sens sans glose")
 
-        # La vedette doit être sa propre clé. Sinon la page existe et personne
-        # ne peut y arriver en tapant le mot lui-même.
-        if head and head not in index_values and eid != "e_about":
-            problems.append(f"« {head} » : la vedette n'est pas une clé")
+        # Les mots que cette page couvre. Pour une entrée ordinaire c'est sa
+        # vedette ; pour une page de forme ambiguë, c'est la liste de ses
+        # membres — « allions » couvre aller et allier.
+        members = [(m.text or "").strip()
+                   for m in entry.findall(f".//{X}h2[@class='member-head']")]
+        covers = members or ([head] if head else [])
+        if index_values:
+            reachable.update(covers)
 
         for form in wanted & set(index_values):
-            found.setdefault(form, []).append(head)
+            found.setdefault(form, []).extend(covers)
 
     print(f"{n_entries} entrées, {len(keys)} clés distinctes, {n_senses} sens")
 
-    # Une clé peut légitimement mener à plusieurs vedettes — « sois » est de
-    # « être », « suis » est de « être » *et* de « suivre ». Ce qu'on refuse,
-    # c'est la clé qui mène deux fois à la même vedette : la liste de résultats
-    # afficherait alors deux lignes identiques.
+    # Depuis les pages de forme ambiguë, une clé n'appartient qu'à une entrée :
+    # « allions » est la clé de sa propre page, et n'est plus sur aller ni sur
+    # allier. Deux entrées pour une clé voudrait dire que le partage a fuité,
+    # et la fenêtre de survol retomberait sur une seule des deux.
     for value, heads in keys.items():
-        if len(heads) != len(set(heads)):
-            problems.append(f"la clé « {value} » mène deux fois à {set(heads)}")
+        if len(heads) > 1:
+            problems.append(f"la clé « {value} » est portée par {len(heads)} "
+                            f"entrées — {heads[:4]}")
+
+    # Toute vedette doit être atteignable. Elle l'est par sa propre clé, ou
+    # parce qu'une page de forme ambiguë l'a absorbée : « brillant » est à la
+    # fois un adjectif et le participe présent de « briller », donc sa clé vit
+    # sur la page « brillant » qui porte les deux. Ce qu'on refuse, c'est le mot
+    # que plus rien n'atteint.
+    lexicon_heads = {json.loads(l)["headword"]
+                     for l in open(S.BUILD / "lexicon.jsonl", encoding="utf-8")
+                     if l.strip()}
+    orphans = sorted(lexicon_heads - reachable)
+    if orphans:
+        problems.append(f"{len(orphans)} vedettes qu'aucune clé n'atteint — "
+                        f"{orphans[:6]}")
 
     print()
     for form in sorted(wanted):
