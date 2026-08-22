@@ -136,21 +136,12 @@
   margin: 0 0 0.4em;
 }
 
-/* --- formes fléchies et renvois ----------------------------------------- */
+/* --- renvois -------------------------------------------------------------- */
 
-.forms {
-  margin: 0.6em 0;
-  font-size: 0.85em;
-}
-
-.form-row { display: flex; gap: 0.5em; }
-
-.form {
-  font-family: "Iowan Old Style", Palatino, Georgia, serif;
-  min-width: 6em;
-}
-
-.form-how { color: #6b6b6b; }
+/* Formes fléchies, synonymes, dérivés : même sorte de renvoi, même rendu — une
+   étiquette et une ligne de mots. Les formes ont eu leur tableau à deux colonnes
+   tant qu'elles portaient leur analyse ; sans elle il ne restait qu'une colonne
+   pleine et une vide. */
 
 /* Un verbe a plus de quarante formes et son propre dictionnaire, installé sur
    la même machine. On le dit et on s'arrête là. */
@@ -196,7 +187,7 @@
 /* Ne marche que si Info.plist porte DCSDictionaryUseSystemAppearance. Sans
    cette clé la fenêtre reste blanche et tout ce bloc est mort. */
 @media (prefers-color-scheme: dark) {
-  .ipa, .form-how, .forms-ref, .about { color: #9a9a9a; }
+  .ipa, .forms-ref, .about { color: #9a9a9a; }
   .sub { color: #b0b0b0; }
   .ex-vi { color: #b8b8b8; }
   .pos, .rel-label, .edited, .ambig { color: #d0a85f; }

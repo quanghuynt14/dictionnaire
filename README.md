@@ -18,7 +18,7 @@ Il sort par deux portes, du même fichier :
 ```
 45 987 vedettes · 10 355 pages de forme ambiguë · 79 303 sens
 45 995 exemples traduits · 240 137 formes fléchies · 280 436 clés
-XML de 69 Mo · bundle de 53 Mo · normalisation 4 s · compilation DDK 2 min
+XML de 68 Mo · bundle de 52 Mo · normalisation 4 s · compilation DDK 2 min
 ```
 
 Ce qui est fait : récupération et verrouillage des sources, normalisation,
@@ -147,6 +147,19 @@ L'analyse de la forme n'y est pas — « imparfait de l'indicatif, première
 personne du pluriel ». La page répond à « quels mots est-ce que je viens de
 lire », et deux vedettes y répondent. *Quelle case de quel verbe* est une autre
 question, et elle a déjà son dictionnaire sur la même machine.
+
+Même règle sur les entrées ordinaires : les formes fléchies d'un nom ou d'un
+adjectif se lisent sur une ligne, sans leur analyse, à côté des synonymes et
+des dérivés — c'est la même sorte de renvoi.
+
+```
+chat
+  Danh từ    Mèo
+  Danh từ    Trò chuyện, tán gẫu
+  Các dạng   chats, chatte, chattes
+  Đồng nghĩa tchat
+  Cụm từ     à bon chat, bon rat, avoir un chat dans la gorge…  +47
+```
 
 10 355 pages, 5 020 vedettes absorbées, et le corps duplique 9,4 Mo. Les 96,3 %
 restants ne bougent pas : leur clé reste sur la vedette, leur corps n'est écrit

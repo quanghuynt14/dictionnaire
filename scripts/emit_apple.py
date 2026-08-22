@@ -116,15 +116,16 @@ def body(entry, forms_index):
     # Les formes fléchies, mais seulement quand elles tiennent. Le seuil vaut
     # aussi comme test : un mot qui dépasse six formes est un verbe, et un verbe
     # renvoie au dictionnaire qui fait ça.
+    #
+    # Sans leur analyse — « giống cái số nhiều » sortait en face de chacune, et
+    # c'est une grammaire qu'on lit alors qu'on cherchait un sens. Ce qu'on
+    # garde est le fait utile : le mot a ces autres graphies. Rendues sur une
+    # ligne, comme les synonymes et les dérivés, parce que c'est la même sorte
+    # de renvoi et que deux colonnes dont l'une est vide font une page cassée.
     shown = [f for f in entry.get("forms", []) if f != head]
     if shown and len(shown) <= MAX_FORMS_SHOWN:
-        p.append('    <div class="forms">')
-        for form in shown:
-            how = next((x["analysis"] for x in forms_index.get(form, [])
-                        if x["lemma"] == head), None)
-            p.append(f'      <div class="form-row"><span class="form">{e(form)}</span>'
-                     f'<span class="form-how">{e(how or "")}</span></div>')
-        p.append('    </div>')
+        p.append('    <div class="rel"><span class="rel-label">Các dạng</span>'
+                 f'<span class="rel-words">{e(", ".join(shown))}</span></div>')
     elif shown:
         p.append('    <div class="forms-ref">Conjugaison complète : '
                  '« Conjugaison française ».</div>')
