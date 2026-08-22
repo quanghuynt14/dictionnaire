@@ -18,7 +18,7 @@ Il sort par deux portes, du même fichier :
 ```
 45 987 vedettes · 10 355 pages de forme ambiguë · 79 303 sens
 45 995 exemples traduits · 240 137 formes fléchies · 280 436 clés
-XML de 69 Mo · bundle de 52 Mo · normalisation 4 s · compilation DDK 2 min
+XML de 69 Mo · bundle de 53 Mo · normalisation 4 s · compilation DDK 2 min
 ```
 
 Ce qui est fait : récupération et verrouillage des sources, normalisation,
