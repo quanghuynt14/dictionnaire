@@ -63,7 +63,22 @@ DDK, ni Rosetta, ni les 190 Mo de sources — ceux-là ne servent qu'à le
 *fabriquer*.
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/quanghuynt14/dictionnaire/HEAD/scripts/install.sh | sh
+```
+
+Le script va chercher la dernière version, l'installe, et relance les services
+de consultation. Il marche aussi sur des archives déjà là :
+
+```bash
+sh install.sh                 # les .zip posés à côté
+sh install.sh ~/Downloads
+```
+
+Pour fabriquer les archives depuis ce dépôt :
+
+```bash
 make dist        # → dist/  : les deux .zip et install.sh
+make release     # publie une version datée sur GitHub
 ```
 
 ```
@@ -71,25 +86,8 @@ Pháp-Việt      12,8 Mo
 Anh-Việt       21,7 Mo
 ```
 
-Trente-quatre mégaoctets pour les deux : AirDrop, clé USB, iCloud, ce que vous
-voulez. Sur l'autre Mac :
-
-```bash
-bash install.sh          # les .zip posés à côté
-bash install.sh ~/Downloads
-```
-
-Ou par GitHub, pour éviter le transport :
-
-```bash
-make release             # publie une version datée
-# et en face :
-gh release download vAAAA.MM.JJ --repo quanghuynt14/dictionnaire --dir ~/dicos
-bash ~/dicos/install.sh
-```
-
-Le dépôt est privé : la seconde voie demande d'être authentifié à `gh` sur
-l'autre Mac.
+Trente-quatre mégaoctets pour les deux, ce qui passe par AirDrop — mais le
+one-liner plus haut évite d'avoir à transporter quoi que ce soit.
 
 `install.sh` refait les deux gestes qui comptent — `rm -rf` avant `ditto`, et
 la relance des services de consultation — et enlève l'attribut de quarantaine
