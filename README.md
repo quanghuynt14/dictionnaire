@@ -9,7 +9,7 @@ Ils sortent du même code, par deux portes :
 
 - **`Pháp–Việt.dictionary`** et **`Anh–Việt.dictionary`** — des bundles pour
   Dictionary.app, consultables partout sur macOS avec ⌃⌘D.
-- **une seed Mongo** pour le site *practice*. *(pas encore écrite — phase 3)*
+- **une seed Mongo** pour le site *practice*, via `make mongo`.
 
 ## État
 
@@ -31,7 +31,8 @@ elle vient de la source : le Wiktionnaire vietnamien documente bien mieux le
 français que l'anglais. Rien dans le pipeline ne peut la combler ; seule une
 autre source le pourrait.
 
-Ce qui reste : l'émetteur Mongo, et `make sync`.
+Ce qui reste : `make sync`, la boucle qui ramène une correction faite sur le
+site jusque dans les bundles.
 
 ## Faire tourner
 
@@ -53,6 +54,29 @@ Sur Apple Silicon, les binaires du DDK sont x86_64 :
 make check LANG=en    # la clé est-elle dans le XML, et mène-t-elle au bon mot ?
 make verify LANG=en   # le bundle installé sait-il y répondre ?  ← celui qui compte
 ```
+
+## Le site
+
+Le second shell. Le même `lexicon-LL.jsonl` sort en NDJSON, et c'est *practice*
+qui l'ingère avec son pilote et ses identifiants — le dictionnaire décide du
+contenu, l'application décide de sa base.
+
+```bash
+make mongo LANG=fr           # → build/mongo-fr.ndjson
+cd ../practice && node --env-file .env \
+  packages/server/src/scripts/seedLexicon.ts ../dictionnaire/build/mongo-fr.ndjson
+```
+
+Le chargement est idempotent : il remplace une langue au lieu d'y ajouter, et
+pose les index sans lesquels chaque recherche balaierait 165 000 documents.
+`--keep-ids` met à jour au lieu de recharger, ce qui préserve les `_id` — donc
+l'historique et les favoris — au prix de la vitesse.
+
+Deux collections. `dictionary` garde la forme que practice lisait déjà, parce
+que l'historique et les favoris pointent ses `_id` : on la remplit, on ne la
+refait pas. `dictionary_forms` est nouvelle, et c'est elle qui manquait au
+site — « allions » n'y donnait rien alors que le bundle le résout depuis
+Verbiste.
 
 ## Les sources
 

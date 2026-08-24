@@ -74,6 +74,23 @@ def indexes(entry, forms_index):
     return out
 
 
+def wiki_link(entry, indent="    "):
+    """Le renvoi à l'article source, pour vérifier une glose.
+
+    C'est la contrepartie d'un dictionnaire compilé : le contenu est figé dans
+    un bundle, et quand une glose a l'air fausse il n'y a rien à interroger. Le
+    lien rouvre la page d'où elle vient.
+
+    Une entrée écrite à la main n'en a pas, et c'est juste : elle est ici
+    précisément parce que le Wiktionnaire ne l'a pas.
+    """
+    url = entry.get("wiki")
+    if not url:
+        return []
+    return [f'{indent}<div class="source"><a href="{html.escape(url, quote=True)}">'
+            f'vi.wiktionary — {e(entry["headword"])}</a></div>']
+
+
 def blocks_html(entry, indent="    "):
     """Les sections d'une entrée — sans son <h1>, pour pouvoir la rendre aussi
     à l'intérieur d'une page de forme ambiguë."""
@@ -146,6 +163,7 @@ def body(entry, forms_index):
     if entry.get("edited"):
         p.append('    <div class="edited">Mục từ đã được sửa tay.</div>')
 
+    p += wiki_link(entry)
     p.append('  </div>')
     return p
 
@@ -181,6 +199,10 @@ def merged_body(form, members):
         p.append('    <div class="member">')
         p.append(f'      <h2 class="member-head">{e(entry["headword"])}</h2>')
         p += blocks_html(entry, indent="      ")
+        # Un lien par membre : ce sont des mots différents, donc des articles
+        # différents. C'est la page où il sert le plus, puisqu'elle rassemble
+        # des mots qu'on n'avait pas demandés.
+        p += wiki_link(entry, indent="      ")
         p.append('    </div>')
     p.append('  </div>')
     return p

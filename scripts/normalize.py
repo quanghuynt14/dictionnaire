@@ -30,6 +30,7 @@ import importlib
 import json
 import re
 import sys
+import urllib.parse
 
 import sources as S
 
@@ -50,6 +51,28 @@ def load_kaikki(path):
         if row.get("word"):
             by_word[row["word"]].append(row)
     return by_word
+
+
+def wiki_url(headword, lang_name):
+    """Le lien vers l'article du Wiktionnaire vietnamien dont vient l'entrée.
+
+    Ancré sur la **langue**, pas sur la partie du discours, et c'est mesuré.
+    MediaWiki numérote les titres qui se répètent dans une page : sur « chat »,
+    qui existe en anglais, en créole, en irlandais et en français, les ancres
+    sont « Danh_từ », « Danh_từ_2 », « Danh_từ_3 » — et la première appartient
+    au **tiếng Anh**. Pointer « chat » (nom français) sur « #Danh_từ » enverrait
+    donc le lecteur dans la section anglaise. Les ancres de langue, elles, sont
+    uniques et stables : « #Tiếng_Pháp », « #Tiếng_Anh ».
+
+    Il n'existe d'ancre par sens dans aucune édition du Wiktionnaire. Le lien
+    mène à la section de la langue, où tous les sens sont listés — ce qui est
+    ce qu'on veut pour vérifier une glose.
+    """
+    if not lang_name:
+        return None
+    page = urllib.parse.quote(headword.replace(" ", "_"), safe="_")
+    anchor = urllib.parse.quote(lang_name.replace(" ", "_"), safe="_")
+    return f"https://vi.wiktionary.org/wiki/{page}#{anchor}"
 
 
 def build_senses(row):
@@ -118,6 +141,9 @@ def build_entry(headword, rows, freq, code):
         "id": f"{code}:{headword}",
         "lang": code,
         "headword": headword,
+        # La section du Wiktionnaire d'où sort l'entrée — « Tiếng Pháp »,
+        # « Tiếng Anh ». C'est kaikki qui la nomme, on ne la devine pas.
+        "wiki": wiki_url(headword, (rows[0].get("lang") if rows else None)),
         "rank": freq.get(headword, 0.0),
         "ipa": list(dict.fromkeys(ipa))[:3],
         "audio": audio,

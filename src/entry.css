@@ -172,6 +172,24 @@
   margin-top: 0.6em;
 }
 
+/* --- le renvoi à la source ---------------------------------------------- */
+
+/* Discret : on ne le cherche que quand une glose a l'air fausse, et le reste du
+   temps il ne doit pas concurrencer le contenu. Pas de soulignement au repos —
+   dans une fenêtre de 300 px un trait sous une ligne se lit comme un
+   séparateur, pas comme un lien. */
+.source {
+  margin-top: 0.7em;
+  font-size: 0.78em;
+}
+
+.source a {
+  color: #8a6d3b;
+  text-decoration: none;
+}
+
+.source a:hover { text-decoration: underline; }
+
 /* --- le tampon de fabrication ------------------------------------------- */
 
 .about {
@@ -191,6 +209,7 @@
   .sub { color: #b0b0b0; }
   .ex-vi { color: #b8b8b8; }
   .pos, .rel-label, .edited, .ambig { color: #d0a85f; }
+  .source a { color: #d0a85f; }
   .member + .member { border-top-color: rgba(255, 255, 255, 0.16); }
   .examples { border-left-color: rgba(208, 168, 95, 0.32); }
 }

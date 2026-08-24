@@ -17,7 +17,7 @@ export DICT_DEV_KIT_OBJ_DIR
 
 DESTINATION_FOLDER  = $(HOME)/Library/Dictionaries
 
-.PHONY: all both fetch normalize xml build install uninstall setup clean check verify refresh
+.PHONY: all both fetch normalize xml mongo build install uninstall setup clean check verify refresh
 
 all: install
 
@@ -39,6 +39,10 @@ normalize:
 
 xml: normalize
 	python3 scripts/emit_apple.py --lang $(LANG)
+
+# L'autre shell : le même lexique, en NDJSON, pour la base de practice.
+mongo: normalize
+	python3 scripts/emit_mongo.py --lang $(LANG)
 
 # -v 10.11 : la disposition moderne du bundle — données sous Contents/Resources,
 # index trie, IDXDictionaryVersion 3. Sans elle, build_dict.sh vise 10.5 par
