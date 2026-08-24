@@ -26,6 +26,11 @@ LANGS = {
     "fr": {
         "name": "Pháp–Việt",
         "bundle": "Pháp-Việt",
+        # Le nom du bundle porte des accents ; celui de l'archive publiée ne
+        # peut pas. GitHub remplace tout caractère non-ASCII d'un fichier de
+        # version par un point : « Pháp-Việt.dictionary.zip » y devient
+        # « Phap-Vi.t.dictionary.zip », et l'URL de téléchargement rend 404.
+        "slug": "phap-viet",
         "identifier": "fr.huy.phap-viet",
         # La section « Tiếng Pháp » du Wiktionnaire vietnamien : des vedettes
         # françaises glosées en vietnamien, écrites par des humains, déjà en JSON.
@@ -44,6 +49,7 @@ LANGS = {
     "en": {
         "name": "Anh–Việt",
         "bundle": "Anh-Việt",
+        "slug": "anh-viet",
         "identifier": "fr.huy.anh-viet",
         "kaikki_url": ("https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Anh/"
                        "kaikki.org-dictionary-Ti%E1%BA%BFngAnh.jsonl"),

@@ -50,10 +50,12 @@ if [ -z "$SOURCE_DIR" ]; then
       "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
       && ! grep -q '"message": *"Not Found"' "$SOURCE_DIR/probe"; then
     rm -f "$SOURCE_DIR/probe"
-    for name in "Pháp-Việt" "Anh-Việt"; do
-      echo "    ↓ $name"
-      curl -fsSL -o "$SOURCE_DIR/$name.dictionary.zip" \
-        "https://github.com/$REPO/releases/latest/download/$name.dictionary.zip"
+    # Noms ASCII : GitHub remplace tout caractère non-ASCII d'un fichier de
+    # version par un point, et l'URL accentuée rend alors 404.
+    for slug in phap-viet anh-viet; do
+      echo "    ↓ $slug"
+      curl -fsSL -o "$SOURCE_DIR/$slug.dictionary.zip" \
+        "https://github.com/$REPO/releases/latest/download/$slug.dictionary.zip"
     done
   elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     rm -f "$SOURCE_DIR/probe"
@@ -81,16 +83,17 @@ mkdir -p "$DEST"
 for zip in "$SOURCE_DIR"/*.dictionary.zip; do
   [ -e "$zip" ] || continue
   found=1
-  name="$(basename "$zip" .zip)"
-  echo "  → $name"
-
   rm -rf "$tmp/x"
   mkdir -p "$tmp/x"
   ditto -x -k "$zip" "$tmp/x"
 
-  bundle="$tmp/x/$name"
-  [ -d "$bundle" ] || bundle="$(find "$tmp/x" -maxdepth 2 -name '*.dictionary' -print -quit)"
-  [ -d "$bundle" ] || { echo "     ✗ pas de bundle dans l'archive" >&2; continue; }
+  # Le nom d'installation vient du bundle **dans** l'archive, jamais du nom du
+  # fichier : l'archive s'appelle « phap-viet » en ASCII pour survivre à
+  # GitHub, le dictionnaire s'appelle « Pháp-Việt » et doit le rester.
+  bundle="$(find "$tmp/x" -maxdepth 2 -name '*.dictionary' -print -quit)"
+  [ -d "$bundle" ] || { echo "  ✗ pas de bundle dans $(basename "$zip")" >&2; continue; }
+  name="$(basename "$bundle")"
+  echo "  → $name"
 
   # Un fichier téléchargé porte l'attribut de quarantaine. Dictionary.app lit
   # quand même — ce ne sont pas des exécutables — mais l'enlever évite une

@@ -136,11 +136,12 @@ dist:
 	@mkdir -p $(DIST)
 	@for lang in fr en; do \
 		name=$$(python3 -c "import sys;sys.path.insert(0,'scripts');import sources;print(sources.lang('$$lang')['bundle'])"); \
+		slug=$$(python3 -c "import sys;sys.path.insert(0,'scripts');import sources;print(sources.lang('$$lang')['slug'])"); \
 		src="$(DESTINATION_FOLDER)/$$name.dictionary"; \
 		test -d "$$src" || { echo "✗ $$name.dictionary pas installé — lancez make install LANG=$$lang"; exit 1; }; \
-		rm -f "$(DIST)/$$name.dictionary.zip"; \
-		ditto -c -k --sequesterRsrc --keepParent "$$src" "$(DIST)/$$name.dictionary.zip"; \
-		printf "  %-16s %5.1f Mo\n" "$$name" $$(echo "$$(stat -f %z "$(DIST)/$$name.dictionary.zip")/1000000" | bc -l); \
+		rm -f "$(DIST)/$$slug.dictionary.zip"; \
+		ditto -c -k --sequesterRsrc --keepParent "$$src" "$(DIST)/$$slug.dictionary.zip"; \
+		printf "  %-22s %5.1f Mo\n" "$$slug.dictionary.zip" $$(echo "$$(stat -f %z "$(DIST)/$$slug.dictionary.zip")/1000000" | bc -l); \
 	done
 	@cp scripts/install.sh $(DIST)/
 	@echo "  → $(DIST)/  (les .zip et install.sh — copiez le dossier sur l'autre Mac)"
