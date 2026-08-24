@@ -1,15 +1,65 @@
 # dictionnaire
 
-Deux dictionnaires **vers le vietnamien** qui ne demandent rien à personne au
-moment où on les consulte. Pas de modèle de langue, pas de requête réseau, pas
-de clé d'API : le contenu est écrit par des humains, compilé une fois, et lu
-depuis le disque.
+Deux dictionnaires **vers le vietnamien** — français et anglais — pour
+Dictionary.app, et pour le web.
 
-Ils sortent du même code, par deux portes :
+Ils ne demandent rien à personne au moment où on les consulte : pas de modèle
+de langue, pas de requête réseau, pas de clé d'API. Le contenu est écrit par
+des humains, compilé une fois, et lu depuis le disque.
 
-- **`Pháp–Việt.dictionary`** et **`Anh–Việt.dictionary`** — des bundles pour
-  Dictionary.app, consultables partout sur macOS avec ⌃⌘D.
-- **une seed Mongo** pour le site *practice*, via `make mongo`.
+## Installer
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/quanghuynt14/dictionnaire/HEAD/scripts/install.sh | sh
+```
+
+Trente-quatre mégaoctets, une dizaine de secondes. Rien à compiler : un bundle
+`.dictionary` est un dossier de **données**, pas un programme — ni Python, ni le
+DDK, ni Rosetta, ni les 190 Mo de sources, qui ne servent qu'à le *fabriquer*.
+
+Il reste **une chose, à faire une seule fois**, et qu'aucun script ne peut faire
+à votre place : ouvrez Dictionnaire.app > Réglages, cochez « Pháp–Việt » et
+« Anh–Việt », et remontez-les au-dessus des dictionnaires d'Apple. Rien ne les
+consultera avant.
+
+Ensuite, ⌃⌘D sur n'importe quel mot, n'importe où dans macOS.
+
+<details>
+<summary>Sans le tube, ou hors ligne</summary>
+
+Le même script accepte un dossier d'archives — celles de la
+[dernière version](https://github.com/quanghuynt14/dictionnaire/releases/latest),
+ou celles que `make dist` fabrique ici :
+
+```bash
+sh install.sh                 # les .zip posés à côté
+sh install.sh ~/Downloads
+```
+
+Il refait les deux gestes qui comptent, et pour lesquels il y a des raisons
+écrites dans son en-tête : `rm -rf` avant `ditto`, sinon macOS garde un index
+périmé et le dictionnaire disparaît de la fenêtre de consultation ; et un
+`pkill -f` sur les services XPC de consultation, que `killall` ne reconnaît
+pas. Il enlève aussi la quarantaine d'un fichier téléchargé.
+
+</details>
+
+## Ce qu'ils savent faire
+
+Chercher la forme qu'on vient de lire, pas seulement la vedette.
+
+```
+allions   →  aller     imparfait de l'indicatif, 1ʳᵉ pers. plur.
+          →  allier    présent de l'indicatif, 1ʳᵉ pers. plur.
+prises    →  prendre, pris, prise, priser
+went      →  go
+saw       →  see
+```
+
+Une forme qui mène à plusieurs mots ouvre **une page qui les porte tous** : la
+fenêtre de survol ne rend qu'une entrée par dictionnaire, et n'en montrer qu'un
+serait une demi-réponse. Chaque mot renvoie à l'article du Wiktionnaire dont il
+sort, pour vérifier une glose.
 
 ## État
 
@@ -34,7 +84,10 @@ autre source le pourrait.
 Ce qui reste : `make sync`, la boucle qui ramène une correction faite sur le
 site jusque dans les bundles.
 
-## Faire tourner
+## Reconstruire depuis les sources
+
+Rien de tout ça n'est nécessaire pour *se servir* du dictionnaire — seulement
+pour le refaire, ou pour le modifier.
 
 ```bash
 make fetch                 # les sources, et data/sources.lock qui dit lesquelles
@@ -44,9 +97,6 @@ make both                  # les deux
 make install TOP=3000      # une coupe, pour essayer
 ```
 
-Puis, **une seule fois par dictionnaire** : Dictionary.app > Réglages > cochez-le,
-et remontez-le au-dessus des dictionnaires d'Apple. Rien ne le consultera avant.
-
 Sur Apple Silicon, les binaires du DDK sont x86_64 :
 `softwareupdate --install-rosetta --agree-to-license`.
 
@@ -55,44 +105,18 @@ make check LANG=en    # la clé est-elle dans le XML, et mène-t-elle au bon mot
 make verify LANG=en   # le bundle installé sait-il y répondre ?  ← celui qui compte
 ```
 
-## Sur un autre Mac
-
-Un bundle `.dictionary` est un **dossier de données**, pas un programme. Il se
-copie tel quel, et rien n'a besoin d'être compilé en face : ni Python, ni le
-DDK, ni Rosetta, ni les 190 Mo de sources — ceux-là ne servent qu'à le
-*fabriquer*.
+## Fabriquer les archives
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/quanghuynt14/dictionnaire/HEAD/scripts/install.sh | sh
-```
-
-Le script va chercher la dernière version, l'installe, et relance les services
-de consultation. Il marche aussi sur des archives déjà là :
-
-```bash
-sh install.sh                 # les .zip posés à côté
-sh install.sh ~/Downloads
-```
-
-Pour fabriquer les archives depuis ce dépôt :
-
-```bash
-make dist        # → dist/  : les deux .zip et install.sh
+make dist        # → dist/ : les deux .zip en ASCII, et install.sh
 make release     # publie une version datée sur GitHub
 ```
 
-```
-Pháp-Việt      12,8 Mo
-Anh-Việt       21,7 Mo
-```
-
-Trente-quatre mégaoctets pour les deux, ce qui passe par AirDrop — mais le
-one-liner plus haut évite d'avoir à transporter quoi que ce soit.
-
-`install.sh` refait les deux gestes qui comptent — `rm -rf` avant `ditto`, et
-la relance des services de consultation — et enlève l'attribut de quarantaine
-d'un fichier téléchargé. Il ne peut pas cocher le dictionnaire dans les
-réglages ; ça reste à faire à la main, une fois.
+Les archives portent un slug ASCII — `phap-viet`, `anh-viet` — et non le nom
+du bundle : GitHub remplace tout caractère non-ASCII du nom d'un fichier de
+version par un point, et « Pháp-Việt.dictionary.zip » y devient
+« Phap-Vi.t.dictionary.zip », dont l'URL rend 404. L'installateur lit donc le
+nom du dictionnaire *dans* l'archive.
 
 ## Le site
 
