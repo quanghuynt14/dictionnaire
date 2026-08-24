@@ -17,7 +17,7 @@ export DICT_DEV_KIT_OBJ_DIR
 
 DESTINATION_FOLDER  = $(HOME)/Library/Dictionaries
 
-.PHONY: all both fetch normalize xml mongo build install uninstall setup clean check verify refresh
+.PHONY: all both fetch normalize xml mongo build install uninstall setup clean check verify refresh dist release
 
 all: install
 
@@ -122,5 +122,37 @@ check:
 verify:
 	python3 scripts/verify_lookup.py --lang $(LANG)
 
+# --- distribution ---------------------------------------------------------
+#
+# Un bundle .dictionary est un dossier de données : il se copie d'un Mac à
+# l'autre tel quel. Rien à compiler en face — le DDK, Python et les 190 Mo de
+# sources ne servent qu'à le *fabriquer*.
+#
+# `ditto -c -k` plutôt que `zip` : c'est l'outil d'Apple, il préserve ce qu'un
+# bundle attend, et c'est le pendant exact du `ditto -x -k` de install.sh.
+DIST = dist
+
+dist:
+	@mkdir -p $(DIST)
+	@for lang in fr en; do \
+		name=$$(python3 -c "import sys;sys.path.insert(0,'scripts');import sources;print(sources.lang('$$lang')['bundle'])"); \
+		src="$(DESTINATION_FOLDER)/$$name.dictionary"; \
+		test -d "$$src" || { echo "✗ $$name.dictionary pas installé — lancez make install LANG=$$lang"; exit 1; }; \
+		rm -f "$(DIST)/$$name.dictionary.zip"; \
+		ditto -c -k --sequesterRsrc --keepParent "$$src" "$(DIST)/$$name.dictionary.zip"; \
+		printf "  %-16s %5.1f Mo\n" "$$name" $$(echo "$$(stat -f %z "$(DIST)/$$name.dictionary.zip")/1000000" | bc -l); \
+	done
+	@cp scripts/install.sh $(DIST)/
+	@echo "  → $(DIST)/  (les .zip et install.sh — copiez le dossier sur l'autre Mac)"
+
+# Une version sur GitHub, pour ne pas passer par une clé USB. Le dépôt est
+# privé : `gh release download` sur l'autre Mac demande d'y être authentifié.
+release: dist
+	@v=$$(date +%Y.%m.%d); \
+	gh release create "v$$v" $(DIST)/*.zip $(DIST)/install.sh \
+		--title "Dictionnaires $$v" \
+		--notes "Pháp–Việt et Anh–Việt pour Dictionary.app.$$(printf '\n\n')Sur l'autre Mac :$$(printf '\n')\`\`\`$$(printf '\n')gh release download v$$v --repo quanghuynt14/dictionnaire --dir ~/Downloads/dicos$$(printf '\n')bash ~/Downloads/dicos/install.sh$$(printf '\n')\`\`\`" \
+		|| gh release upload "v$$v" $(DIST)/*.zip $(DIST)/install.sh --clobber
+
 clean:
-	rm -rf $(DICT_DEV_KIT_OBJ_DIR) $(DICT_DEV_KIT_OBJ_DIR)-build.log build src/*.xml
+	rm -rf $(DICT_DEV_KIT_OBJ_DIR) $(DICT_DEV_KIT_OBJ_DIR)-build.log build dist src/*.xml

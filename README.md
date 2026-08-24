@@ -55,6 +55,47 @@ make check LANG=en    # la clé est-elle dans le XML, et mène-t-elle au bon mot
 make verify LANG=en   # le bundle installé sait-il y répondre ?  ← celui qui compte
 ```
 
+## Sur un autre Mac
+
+Un bundle `.dictionary` est un **dossier de données**, pas un programme. Il se
+copie tel quel, et rien n'a besoin d'être compilé en face : ni Python, ni le
+DDK, ni Rosetta, ni les 190 Mo de sources — ceux-là ne servent qu'à le
+*fabriquer*.
+
+```bash
+make dist        # → dist/  : les deux .zip et install.sh
+```
+
+```
+Pháp-Việt      12,8 Mo
+Anh-Việt       21,7 Mo
+```
+
+Trente-quatre mégaoctets pour les deux : AirDrop, clé USB, iCloud, ce que vous
+voulez. Sur l'autre Mac :
+
+```bash
+bash install.sh          # les .zip posés à côté
+bash install.sh ~/Downloads
+```
+
+Ou par GitHub, pour éviter le transport :
+
+```bash
+make release             # publie une version datée
+# et en face :
+gh release download vAAAA.MM.JJ --repo quanghuynt14/dictionnaire --dir ~/dicos
+bash ~/dicos/install.sh
+```
+
+Le dépôt est privé : la seconde voie demande d'être authentifié à `gh` sur
+l'autre Mac.
+
+`install.sh` refait les deux gestes qui comptent — `rm -rf` avant `ditto`, et
+la relance des services de consultation — et enlève l'attribut de quarantaine
+d'un fichier téléchargé. Il ne peut pas cocher le dictionnaire dans les
+réglages ; ça reste à faire à la main, une fois.
+
 ## Le site
 
 Le second shell. Le même `lexicon-LL.jsonl` sort en NDJSON, et c'est *practice*

@@ -12,3 +12,4 @@ tools/dictionary-development-kit/
 __pycache__/
 src/*.xml
 src/Info-*.plist
+dist/
