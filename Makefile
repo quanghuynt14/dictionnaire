@@ -144,16 +144,43 @@ dist:
 		printf "  %-22s %5.1f Mo\n" "$$slug.dictionary.zip" $$(echo "$$(stat -f %z "$(DIST)/$$slug.dictionary.zip")/1000000" | bc -l); \
 	done
 	@cp scripts/install.sh $(DIST)/
-	@echo "  → $(DIST)/  (les .zip et install.sh — copiez le dossier sur l'autre Mac)"
+	@echo "  → $(DIST)/  (les .zip et install.sh)"
 
-# Une version sur GitHub, pour ne pas passer par une clé USB. Le dépôt est
-# privé : `gh release download` sur l'autre Mac demande d'y être authentifié.
+# Une version sur GitHub, pour que l'installation tienne en une ligne.
+#
+# On regarde si la version existe avant de choisir, plutôt que « create ||
+# upload » : le `||` avalait l'erreur de `create` et n'affichait que celle du
+# repli — « release not found », qui ne dit rien de la cause. Constaté pour de
+# bon dans conjugaison, où un `create` momentanément en échec s'est présenté
+# comme une version manquante.
+#
+# Les notes passent par un fichier, et non par `--notes "…$$(printf '\n')…"` :
+# la substitution de commande mange les sauts de ligne finaux, donc ce
+# printf-là rendait la chaîne vide et collait toutes les lignes en une seule.
+# Elles sont réécrites à chaque fois, y compris quand la version existe déjà —
+# `upload` ne les touche pas, et les nôtres avaient vieilli sans qu'on le voie.
 release: dist
 	@v=$$(date +%Y.%m.%d); \
-	gh release create "v$$v" $(DIST)/*.zip $(DIST)/install.sh \
-		--title "Dictionnaires $$v" \
-		--notes "Pháp–Việt et Anh–Việt pour Dictionary.app.$$(printf '\n\n')Sur l'autre Mac :$$(printf '\n')\`\`\`$$(printf '\n')gh release download v$$v --repo quanghuynt14/dictionnaire --dir ~/Downloads/dicos$$(printf '\n')bash ~/Downloads/dicos/install.sh$$(printf '\n')\`\`\`" \
-		|| gh release upload "v$$v" $(DIST)/*.zip $(DIST)/install.sh --clobber
+	notes=$$(mktemp); \
+	{ \
+		echo "Pháp–Việt et Anh–Việt pour Dictionary.app."; \
+		echo; \
+		echo "## Installer"; \
+		echo; \
+		echo '```bash'; \
+		echo "curl -fsSL https://raw.githubusercontent.com/quanghuynt14/dictionnaire/HEAD/scripts/install.sh | sh"; \
+		echo '```'; \
+		echo; \
+		echo "Puis cochez « Pháp–Việt » et « Anh–Việt » dans Dictionnaire.app > Réglages."; \
+	} > "$$notes"; \
+	if gh release view "v$$v" >/dev/null 2>&1; then \
+		gh release upload "v$$v" $(DIST)/*.zip $(DIST)/install.sh --clobber; \
+		gh release edit "v$$v" --notes-file "$$notes" >/dev/null; \
+	else \
+		gh release create "v$$v" $(DIST)/*.zip $(DIST)/install.sh \
+			--title "Dictionnaires $$v" --notes-file "$$notes"; \
+	fi; \
+	rm -f "$$notes"
 
 clean:
 	rm -rf $(DICT_DEV_KIT_OBJ_DIR) $(DICT_DEV_KIT_OBJ_DIR)-build.log build dist src/*.xml
