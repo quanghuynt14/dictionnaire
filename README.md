@@ -33,8 +33,13 @@ ou celles que `make dist` fabrique ici :
 
 ```bash
 sh install.sh                 # les .zip posés à côté
-sh install.sh ~/Downloads
+sh install.sh ~/Downloads     # ou dans le dossier indiqué
 ```
+
+Posé à côté, il ne cherche que **ses** archives, par leur nom. Il cherchait
+n'importe quel `*.dictionary.zip`, et rangé dans un dossier qui en contenait
+un autre il installait celui-là en annonçant une réussite. Un dossier passé en
+argument garde l'ancien comportement : là, c'est un choix explicite.
 
 Il refait les deux gestes qui comptent, et pour lesquels il y a des raisons
 écrites dans son en-tête : `rm -rf` avant `ditto`, sinon macOS garde un index
@@ -43,6 +48,14 @@ périmé et le dictionnaire disparaît de la fenêtre de consultation ; et un
 pas. Il enlève aussi la quarantaine d'un fichier téléchargé.
 
 </details>
+
+### À côté
+
+[**conjugaison**](https://github.com/quanghuynt14/conjugaison) donne la
+*forme* — 2 004 verbes, 77 277 formes, une conjugaison inversée. Les deux
+s'installent côte à côte : `allions` ouvre sa traduction ici, sa conjugaison
+là. C'est pourquoi les pages de verbe de ce dictionnaire renvoient à
+« Conjugaison française » au lieu de recopier quarante-cinq cases.
 
 ## Ce qu'ils savent faire
 
