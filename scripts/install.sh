@@ -44,35 +44,26 @@ if [ -z "$SOURCE_DIR" ]; then
   mkdir -p "$SOURCE_DIR"
   echo "  Téléchargement de la dernière version…"
 
-  # Dépôt public : les fichiers d'une version se prennent sans jeton.
-  # Dépôt privé : il en faut un, et `gh` l'a déjà.
-  if curl -fsSL -o "$SOURCE_DIR/probe" \
-      "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
-      && ! grep -q '"message": *"Not Found"' "$SOURCE_DIR/probe"; then
-    rm -f "$SOURCE_DIR/probe"
-    # Noms ASCII : GitHub remplace tout caractère non-ASCII d'un fichier de
-    # version par un point, et l'URL accentuée rend alors 404.
-    for slug in phap-viet anh-viet; do
-      echo "    ↓ $slug"
-      curl -fsSL -o "$SOURCE_DIR/$slug.dictionary.zip" \
-        "https://github.com/$REPO/releases/latest/download/$slug.dictionary.zip"
-    done
-  elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-    rm -f "$SOURCE_DIR/probe"
-    gh release download --repo "$REPO" --pattern '*.dictionary.zip' --dir "$SOURCE_DIR"
-  else
-    cat >&2 <<'ERR'
+  # Noms ASCII : GitHub remplace tout caractère non-ASCII du nom d'un fichier
+  # de version par un point — « Pháp-Việt.dictionary.zip » y est stocké
+  # « Phap-Vi.t.dictionary.zip » — et l'URL accentuée rend alors 404.
+  for slug in phap-viet anh-viet; do
+    echo "    ↓ $slug"
+    if ! curl -fsSL -o "$SOURCE_DIR/$slug.dictionary.zip" \
+        "https://github.com/$REPO/releases/latest/download/$slug.dictionary.zip"; then
+      cat >&2 <<ERR
 
-  Impossible de récupérer les archives.
+  Téléchargement impossible : $slug.dictionary.zip
 
-  Le dépôt est privé : il faut soit `gh` authentifié sur ce Mac
-  (« gh auth login »), soit copier les .zip à la main et relancer :
+  Vérifiez la connexion, ou prenez les archives à la main sur
+  https://github.com/$REPO/releases/latest puis relancez :
 
       sh install.sh ~/Downloads
 
 ERR
-    exit 1
-  fi
+      exit 1
+    fi
+  done
 fi
 
 # --- installation -----------------------------------------------------------
