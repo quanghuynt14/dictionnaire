@@ -34,7 +34,10 @@ if [ -z "$SOURCE_DIR" ]; then
     */*) here="$(cd "$(dirname "$0")" && pwd)" ;;
     *)   here="" ;;
   esac
-  if [ -n "$here" ] && ls "$here"/*.dictionary.zip >/dev/null 2>&1; then
+  # On ne cherche que **ses** archives, pas n'importe quel *.dictionary.zip :
+  # un install.sh posé dans ~/Downloads à côté de l'archive d'un autre
+  # dictionnaire installerait celui-là, sans rien dire. Constaté pour de bon.
+  if [ -n "$here" ] && [ -f "$here/phap-viet.dictionary.zip" ]; then
     SOURCE_DIR="$here"
   fi
 fi
