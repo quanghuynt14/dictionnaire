@@ -13,6 +13,7 @@ import hashlib
 import io
 import json
 import shutil
+import subprocess
 import sys
 import urllib.request
 import zipfile
@@ -99,6 +100,17 @@ def main():
     lock["wordnet"] = {n: digest(S.WORDNET_EXC / f"{n}.exc")
                        for n in ("noun", "verb", "adj", "adv")}
     lock["frequence-en"] = {"url": S.SUBTLEX_URL, "sha256": digest(S.SUBTLEX)}
+
+    # Le rattrapage, après les dumps : il a besoin d'eux pour savoir quelles
+    # vedettes sont sans glose.
+    for code in S.LANGS:
+        if force or not S.rescued(code).exists():
+            print(f"  ↻ rattrapage {code}")
+            subprocess.run([sys.executable, str(S.ROOT / "scripts" / "rescue.py"),
+                            "--lang", code], check=True)
+        else:
+            print(f"  = rescued-{code}.jsonl déjà là")
+        lock[f"rescued-{code}"] = {"sha256": digest(S.rescued(code))}
 
     S.LOCK.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n",
                       encoding="utf-8")

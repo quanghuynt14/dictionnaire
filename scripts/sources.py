@@ -86,6 +86,16 @@ SUBTLEX_URL = ("https://raw.githubusercontent.com/hermitdave/FrequencyWords/"
                "master/content/2018/en/en_full.txt")
 
 
+def rescued(code):
+    """Les vedettes que wiktextract rend sans glose, relues sur le wikitexte.
+
+    Une partie du Wiktionnaire vietnamien écrit ses définitions en HTML brut
+    (`<LI class=def>`) ou sur une ligne indentée après un tiret, formes que
+    wiktextract ne reconnaît pas. Voir scripts/rescue.py.
+    """
+    return SOURCES / f"rescued-{code}.jsonl"
+
+
 def lang(code):
     if code not in LANGS:
         raise SystemExit(f"langue inconnue « {code} » — attendu : "

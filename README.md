@@ -80,13 +80,13 @@ sort, pour vérifier une glose.
 
 | | Pháp–Việt | Anh–Việt |
 |---|---|---|
-| vedettes | 45 987 | 119 091 |
-| sens | 79 303 | 190 621 |
+| vedettes | 46 160 | 119 108 |
+| sens | 79 607 | 190 647 |
 | — avec exemple traduit | **34 %** | **9 %** |
 | exemples | 45 995 | 27 401 |
-| formes fléchies | 240 137 | 199 656 |
-| pages de forme ambiguë | 10 355 | 23 052 |
-| clés | 280 436 | 295 898 |
+| formes fléchies | 240 788 | 199 674 |
+| pages de forme ambiguë | 10 488 | 23 056 |
+| clés | 281 174 | 295 929 |
 | bundle | 55,6 Mo | 53,1 Mo |
 
 Les 9 % d'exemples côté anglais sont la faiblesse connue de ce dictionnaire, et
@@ -182,6 +182,34 @@ le seul endroit où les deux dictionnaires diffèrent vraiment.
 | en | exceptions de **WordNet 3.0** | 5 940 irréguliers, à la main |
 | en | **des règles** | pluriels, `-s`, `-ing`, `-ed`, `-er`, `-est` |
 | en | [FrequencyWords](https://github.com/hermitdave/FrequencyWords) | la fréquence |
+
+### Les vedettes que wiktextract ne voit pas
+
+kaikki lit les définitions écrites en syntaxe MediaWiki — les lignes qui
+commencent par `#`. Une partie du Wiktionnaire vietnamien ne les écrit pas
+ainsi. L'import du *Free Vietnamese Dictionary Project* (`{{R:FVDP}}`) a posé
+des `<LI class=def>` en HTML brut, et d'autres pages mettent la définition sur
+une ligne indentée après un tiret. wiktextract n'y voit aucune glose et rend un
+sens vide.
+
+`normalize.py` écarte une entrée sans glose — à raison. Mais ces pages-là ne
+sont pas vides : elles sont mal balisées. Mesuré, **197 vedettes françaises
+(0,43 %) et 75 anglaises (0,06 %)**, dont « mélancolie », « dictionnaire »,
+« Asie », « français ».
+
+`scripts/rescue.py` relit leur wikitexte par l'API MediaWiki, quarante titres
+par requête, et en tire les gloses selon quatre formes rencontrées. **173 des
+197 françaises et 17 des 75 anglaises** rentrent ainsi.
+
+Ce qui reste dehors le mérite : « cocagne » n'a réellement que des exemples et
+aucune définition, et la page « appogiature » a été vandalisée — son titre de
+section est une obscénité vietnamienne, et il n'y a pas de définition dessous.
+
+Une règle en est sortie, et elle vaut au-delà de ce script : **une glose fausse
+est pire qu'une glose absente**. Le repli par puces rendait « IMNSHO, IMAO »
+comme sens de « IMHO » — c'étaient ses synonymes. Les puces ne sont donc lues
+que dans un bloc dont on sait qu'il porte une définition, alors qu'un `#`, qui
+n'est jamais une liste de synonymes, se lit partout.
 
 ### La même leçon, deux fois
 

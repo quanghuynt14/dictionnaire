@@ -206,6 +206,22 @@ def main():
     by_word = load_kaikki(cfg["kaikki"])
     print(f"    {len(by_word):,} vedettes")
 
+    # Les rattrapées, relues sur le wikitexte parce que wiktextract n'y voyait
+    # aucune glose : « mélancolie », « dictionnaire », « Asie » — des mots que
+    # le Wiktionnaire décrit bel et bien, mais en HTML brut. Elles complètent
+    # une vedette existante, elles ne la remplacent pas.
+    rescued_path = S.rescued(code)
+    if rescued_path.exists():
+        n_rescued = 0
+        for line in open(rescued_path, encoding="utf-8"):
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            by_word[row["word"]].append(row)
+            n_rescued += 1
+        print(f"    {n_rescued:,} blocs rattrapés sur le wikitexte")
+
     freq = morph.frequency()
     print(f"    {len(freq):,} lemmes classés par fréquence")
 
