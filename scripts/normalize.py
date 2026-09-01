@@ -257,12 +257,24 @@ def main():
         for target in targets:
             by_lemma[target["lemma"]].append(form)
 
+    # La forme pronominale, quand la morphologie en a produit une. Lue dans
+    # l'index plutôt que recalculée : l'élision dépend du h aspiré, que seul
+    # Verbiste connaît, et deux endroits qui la décident finiraient par diverger.
+    pronominal_of = {}
+    for form, targets in index.items():
+        for target in targets:
+            if target.get("analysis") == "forme pronominale":
+                pronominal_of[target["lemma"]] = form
+
     S.BUILD.mkdir(exist_ok=True)
     out = S.BUILD / f"lexicon-{code}.jsonl"
     with open(out, "w", encoding="utf-8") as f:
         for entry in sorted(entries.values(), key=lambda e: -e["rank"]):
             entry["forms"] = sorted(by_lemma.get(entry["headword"], []),
                                     key=str.lower)
+            pronominal = pronominal_of.get(entry["headword"])
+            if pronominal:
+                entry["pronominal"] = pronominal
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     (S.BUILD / f"forms-{code}.json").write_text(

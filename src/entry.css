@@ -136,6 +136,15 @@
   margin: 0 0 0.4em;
 }
 
+/* La forme sous laquelle un sens pronominal s'emploie : « se plaindre ». En
+   serif, comme tout ce qui est du français, et non dans la voix des étiquettes
+   qui l'introduit. */
+.pron-form {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 /* --- renvois -------------------------------------------------------------- */
 
 /* Formes fléchies, synonymes, dérivés : même sorte de renvoi, même rendu — une

@@ -40,9 +40,26 @@ HEADER = ('<?xml version="1.0" encoding="UTF-8"?>\n'
 # va les chercher ailleurs.
 MAX_FORMS_SHOWN = 6
 
+# La catégorie que le Wiktionnaire vietnamien donne à un sens pronominal.
+PRONOMINAL_POS = "Động từ phản thân"
+
 
 def e(text):
     return html.escape(text or "", quote=False)
+
+
+def attr(text):
+    """Une valeur d'attribut XML, entre guillemets doubles.
+
+    `html.escape` échappe l'apostrophe en `&#x27;` par défaut, et le DDK ne la
+    redécode pas dans un `d:value` : la clé devenait littéralement
+    « s&#x27;habiller », que personne ne tape. Toutes les clés à apostrophe
+    étaient muettes — « s'asseoir » compris, qui vient pourtant du dump.
+
+    Dans un attribut délimité par des guillemets doubles, seuls `&`, `<` et `"`
+    ont besoin de l'être. L'apostrophe, non.
+    """
+    return (text or "").replace("&", "&amp;").replace("<", "&lt;").replace('"', "&quot;")
 
 
 def entry_id(headword):
@@ -64,13 +81,13 @@ def indexes(entry, forms_index):
     """
     head = entry["headword"]
     out = [(head,
-            f'  <d:index d:value="{html.escape(head)}" d:title="{html.escape(head)}"/>')]
+            f'  <d:index d:value="{attr(head)}" d:title="{attr(head)}"/>')]
     for form in entry.get("forms", []):
         if form == head:
             continue
         out.append((form,
-                    f'  <d:index d:value="{html.escape(form)}" '
-                    f'd:title="{html.escape(form)} ({html.escape(head)})"/>'))
+                    f'  <d:index d:value="{attr(form)}" '
+                    f'd:title="{attr(form)} ({attr(head)})"/>'))
     return out
 
 
@@ -87,7 +104,7 @@ def wiki_link(entry, indent="    "):
     url = entry.get("wiki")
     if not url:
         return []
-    return [f'{indent}<div class="source"><a href="{html.escape(url, quote=True)}">'
+    return [f'{indent}<div class="source"><a href="{attr(url)}">'
             f'vi.wiktionary — {e(entry["headword"])}</a></div>']
 
 
@@ -99,7 +116,14 @@ def blocks_html(entry, indent="    "):
         label = block.get("pos_vi") or block.get("pos") or ""
         p.append(f'{indent}<div class="block">')
         if label:
-            p.append(f'{indent}  <div class="pos">{e(label)}</div>')
+            # Un sens pronominal ne s'emploie pas sous la vedette nue : on dit
+            # « se plaindre », jamais « plaindre » pour ce sens-là. La catégorie
+            # seule — « Động từ phản thân » — le nomme sans le montrer.
+            if block.get("pos_vi") == PRONOMINAL_POS and entry.get("pronominal"):
+                p.append(f'{indent}  <div class="pos">{e(label)} · '
+                         f'<span class="pron-form">{e(entry["pronominal"])}</span></div>')
+            else:
+                p.append(f'{indent}  <div class="pos">{e(label)}</div>')
         p.append(f'{indent}  <ol class="senses">')
         for sense in block["senses"]:
             p.append(f'{indent}    <li class="sense">')
@@ -293,9 +317,9 @@ def main():
         # réponse.
         for form, members in sorted(ambiguous.items()):
             eid = "a_" + entry_id(form)[2:]
-            f.write(f'<d:entry id="{eid}" d:title="{html.escape(form)}">\n')
-            f.write(f'  <d:index d:value="{html.escape(form)}" '
-                    f'd:title="{html.escape(form)}"/>\n')
+            f.write(f'<d:entry id="{eid}" d:title="{attr(form)}">\n')
+            f.write(f'  <d:index d:value="{attr(form)}" '
+                    f'd:title="{attr(form)}"/>\n')
             n_keys += 1
             f.write("\n".join(merged_body(form, [x for x, _ in members])) + "\n")
             f.write("</d:entry>\n")
@@ -313,7 +337,7 @@ def main():
                 n_dropped += 1
                 continue
             seen.add(eid)
-            f.write(f'<d:entry id="{eid}" d:title="{html.escape(entry["headword"])}">\n')
+            f.write(f'<d:entry id="{eid}" d:title="{attr(entry["headword"])}">\n')
             n_keys += len(idx)
             f.write("\n".join(idx) + "\n")
             f.write("\n".join(body(entry, forms_index)) + "\n")
@@ -329,7 +353,7 @@ def main():
         n_edits = sum(1 for x in lexicon if x.get("edited"))
         f.write('<d:entry id="e_about" d:title="về từ điển này">\n')
         f.write('  <d:index d:value="về từ điển này" d:title="về từ điển này"/>\n')
-        f.write(f'  <d:index d:value="{html.escape(cfg["bundle"])}" '
+        f.write(f'  <d:index d:value="{attr(cfg["bundle"])}" '
                 f'd:title="về từ điển này"/>\n')
         f.write(f'  <div class="entry"><h1 class="headword">{e(cfg["name"])}</h1>\n')
         f.write(f'    <div class="about"><div>{len(seen) + len(ambiguous)} mục từ · {n_keys} khoá '

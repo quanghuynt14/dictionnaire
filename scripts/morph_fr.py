@@ -75,11 +75,35 @@ def load_templates():
 
 
 def load_verbs():
-    """infinitif -> nom du modèle."""
+    """infinitif -> (nom du modèle, h aspiré ?)."""
     root = ET.parse(S.VERBS).getroot()
-    return {v.find("i").text: v.find("t").text
-            for v in root.findall("v")
-            if v.find("i") is not None and v.find("t") is not None}
+    out = {}
+    for v in root.findall("v"):
+        i, t = v.find("i"), v.find("t")
+        if i is not None and t is not None:
+            out[i.text] = (t.text, v.find("aspirate-h") is not None)
+    return out
+
+
+VOYELLES = "aàâeéèêëiîïoôuùûy"
+
+
+def pronominal(infinitive, aspirate_h):
+    """« plaindre » -> « se plaindre », « asseoir » -> « s'asseoir ».
+
+    Le lecteur tape ce qu'il a lu. « se plaindre » et « s'enfuir » sont du
+    français courant, et le dictionnaire ne les trouvait pas : le Wiktionnaire
+    range le sens pronominal sous l'infinitif nu, quand il le range.
+
+    L'élision se décide sur la voyelle, et sur le h — muet, on élide
+    (« s'habiller ») ; aspiré, non (« se hisser »). On ne le devine pas :
+    Verbiste marque les cinquante-sept verbes à h aspiré, et c'est lui qui
+    tranche.
+    """
+    first = infinitive[0].lower()
+    if first in VOYELLES or (first == "h" and not aspirate_h):
+        return f"s'{infinitive}"
+    return f"se {infinitive}"
 
 
 def paradigm(infinitive, template_name, templates):
@@ -232,8 +256,8 @@ def build(entries_by_head):
     # 1. Verbiste : les paradigmes complets.
     templates = load_templates()
     verbs = load_verbs()
-    n_verbs = 0
-    for infinitive, template_name in verbs.items():
+    n_verbs = n_pron = 0
+    for infinitive, (template_name, aspirate_h) in verbs.items():
         if infinitive not in heads:
             continue
         n_verbs += 1
@@ -241,6 +265,12 @@ def build(entries_by_head):
             if form != infinitive:
                 merged[form][infinitive].update(
                     dict.fromkeys([analyse_code(code, accord)]))
+
+        # La forme pronominale mène au même verbe. Toujours juste — c'est le
+        # même mot — et souvent la seule que le lecteur ait vue.
+        merged[pronominal(infinitive, aspirate_h)][infinitive].update(
+            dict.fromkeys(["forme pronominale"]))
+        n_pron += 1
 
     # 2. Lexique : les noms et les adjectifs.
     lexique_forms, _ = load_lexique()
@@ -255,4 +285,4 @@ def build(entries_by_head):
         for lemme, labels in targets.items():
             out.append((form, lemme, ", ".join(l for l in labels if l) or None))
 
-    return out, {"verbiste": n_verbs, "lexique": n_lexique}
+    return out, {"verbiste": n_verbs, "pronominaux": n_pron, "lexique": n_lexique}

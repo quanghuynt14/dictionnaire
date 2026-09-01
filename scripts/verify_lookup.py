@@ -33,7 +33,12 @@ import sources as S
 PROBES = {
     "fr": ["allions", "allie", "prises", "assises", "irions", "vécu", "eu",
            "sois", "meilleures", "chats", "payions", "fussions", "aller",
-           "allier", "langue", "beau"],
+           "allier", "langue", "beau",
+           # Le pronominal : la forme que le lecteur a lue, et que le
+           # Wiktionnaire range sous l'infinitif nu quand il la range.
+           "se plaindre", "se défendre", "s'habiller", "se hisser",
+           # Rattrapées du wikitexte, wiktextract n'y voyait aucune glose.
+           "mélancolie", "dictionnaire"],
     "en": ["went", "children", "feet", "mice", "was", "ran", "better",
            "stopped", "carried", "going", "left", "saw", "book", "run",
            "good", "lying"],

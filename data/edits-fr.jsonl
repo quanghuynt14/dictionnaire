@@ -13,3 +13,13 @@
 // pipeline. Les combler à la main est un travail borné : quelques centaines
 // d'entrées pour les mots-outils, et ce sont les plus consultées du dictionnaire.
 {"id": "fr:faire", "headword": "faire", "rank": 9999, "ipa": ["/fɛʁ/"], "blocks": [{"pos": "verb", "pos_vi": "Ngoại động từ", "senses": [{"gloss": "Làm, chế tạo, tạo ra.", "examples": [{"vi": "làm bánh", "src": "Faire un gâteau"}, {"vi": "xây một ngôi nhà", "src": "Faire une maison"}]}, {"gloss": "Làm, thực hiện, tiến hành.", "examples": [{"vi": "làm bài tập", "src": "Faire ses devoirs"}, {"vi": "chơi thể thao", "src": "Faire du sport"}, {"vi": "bạn đang làm gì thế?", "src": "Qu'est-ce que tu fais ?"}]}, {"gloss": "Bằng, thành (kết quả của phép tính).", "examples": [{"vi": "hai cộng hai bằng bốn", "src": "Deux et deux font quatre"}]}]}, {"pos": "verb", "pos_vi": "Động từ không ngôi", "senses": [{"gloss": "Chỉ thời tiết, trời.", "examples": [{"vi": "trời đẹp", "src": "Il fait beau"}, {"vi": "trời lạnh", "src": "Il fait froid"}, {"vi": "trời tối", "src": "Il fait nuit"}]}]}], "derived": ["faire attention", "faire part", "faire semblant", "s'en faire", "faire la queue", "avoir affaire à"]}
+//
+// Les sens pronominaux manquants. Le Wiktionnaire vietnamien range le sens
+// pronominal sous l'infinitif nu quand il le range — « défendre » porte un
+// bloc « Động từ phản thân » pour « se défendre » — mais il ne le range pas
+// toujours. « plaindre » n'a que le transitif et l'intransitif, alors que
+// « se plaindre » est le sens le plus courant des trois.
+//
+// La forme « se plaindre » est cherchable depuis morph_fr, qui l'indexe pour
+// tous les verbes ; ce qui manquait ici, c'est la glose.
+{"id": "fr:plaindre", "blocks": [{"pos": "verb", "pos_vi": "Ngoại động từ", "senses": [{"gloss": "Thương xót, ái ngại, phàn nàn cho.", "examples": [{"src": "Plaindre les malheureux", "vi": "thương xót những người bất hạnh"}, {"src": "Plaindre le sort de quelqu'un", "vi": "phàn nàn cho số phận của ai"}]}]}, {"pos": "verb", "pos_vi": "Nội động từ", "senses": [{"gloss": "Than vãn, rên rỉ.", "examples": [{"src": "Malade qui ne fait que plaindre", "vi": "người bệnh chỉ rên rỉ"}]}]}, {"pos": "verb", "pos_vi": "Động từ phản thân", "senses": [{"gloss": "Than phiền, phàn nàn, kêu ca.", "examples": [{"src": "Se plaindre du bruit", "vi": "phàn nàn về tiếng ồn"}, {"src": "Il se plaint toujours", "vi": "anh ấy lúc nào cũng kêu ca"}]}, {"gloss": "Kiện, khiếu nại.", "examples": [{"src": "Se plaindre au directeur", "vi": "khiếu nại với giám đốc"}]}]}]}
