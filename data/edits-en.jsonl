@@ -1,0 +1,12 @@
+// Les retouches de l'anglais. Même format que edits-fr.jsonl : un objet JSON
+// par ligne, fusionné par `id` sur l'entrée de base.
+//
+// Pourquoi ces mots sont ici : leurs pages du Wiktionnaire vietnamien écrivent
+// la définition *dans* un modèle d'étiquette — `# {{term|Người nhổ răng}} .` —
+// et wiktextract rend alors « . » pour toute glose. Le texte ci-dessous est
+// celui de la page, sorti du modèle, rien de plus. À retirer le jour où la
+// page est corrigée et le dump régénéré.
+{"id": "en:should", "blocks": [{"pos": "verb", "pos_vi": "Trợ động từ", "tags": ["auxiliary"], "senses": [{"gloss": "Động từ tình thái dùng để chỉ một sự cần thiết vì nhiệm vụ, dùng ở cả ba ngôi.", "examples": [{"src": "we should be punctual", "vi": "chúng ta phải đúng giờ"}, {"src": "there is no reason why aggression should not be resisted", "vi": "không có lý do gì để không chống lại sự xâm lược"}]}, {"gloss": "Động từ tình thái dùng để chỉ một sự ngờ vực.", "examples": [{"src": "I should hardly think so", "vi": "tôi khó mà nghĩ như thế"}]}, {"gloss": "Trợ động từ dùng để hình thành thời tương lai trong thời quá khứ ở ngôi 1 số ít & số nhiều.", "examples": [{"src": "I said I should be at home next week", "vi": "tôi nói là tuần sau tôi sẽ có nhà"}]}, {"gloss": "Trợ động từ dùng để hình thành lối điều kiện ở ngôi 1 số ít & số nhiều.", "examples": [{"src": "I should be glad to come if I could", "vi": "tôi rất thích đến nếu tôi có thể đến được"}]}, {"gloss": "Trợ động từ dùng để hình thành lối lời cầu khẩn.", "examples": [{"src": "it is necessary that he should go home at once", "vi": "có lẽ nó cần phải về nhà ngay"}]}]}]}
+{"id": "en:sodding", "blocks": [{"pos": "adj", "pos_vi": "Tính từ", "senses": [{"gloss": "Đang lúc giận dữ, bực mình để nhấn mạnh.", "examples": []}]}]}
+{"id": "en:exodontist", "blocks": [{"pos": "noun", "pos_vi": "Danh từ", "senses": [{"gloss": "Người nhổ răng.", "examples": []}]}]}
+{"id": "en:'twixt", "blocks": [{"pos": "prep", "pos_vi": "Giới từ", "senses": [{"gloss": "Vt của betwixt.", "examples": []}]}]}
