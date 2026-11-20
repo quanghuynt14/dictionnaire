@@ -40,20 +40,37 @@ def clean(text):
     return re.sub(r"\s+", " ", (text or "").replace(" ", " ")).strip()
 
 
-def load_kaikki(path):
-    """Les lignes kaikki regroupées par vedette."""
+# Ce que build_entry lit d'une ligne kaikki. Le reste — head_templates,
+# catégories, étymologie — pèse plus que les sens, et Việt–Pháp lit deux dumps.
+KEPT_FIELDS = ("word", "lang", "pos", "pos_title", "tags", "senses", "sounds",
+               "derived", "related", "synonyms", "antonyms")
+
+
+def load_kaikki(sources, keep=None):
+    """Les lignes kaikki de toutes les sources, regroupées par vedette.
+
+    Chaque ligne garde la trace de sa source sous `_src` : c'est elle qui dit
+    dans quelle langue sont ses gloses et vers quel wiki renvoyer. Les sources
+    sont lues dans l'ordre de la liste, donc les blocs d'une vedette sortent
+    dans cet ordre aussi — le français avant l'anglais pour Việt–Pháp.
+    """
     by_word = collections.defaultdict(list)
-    for line in open(path, encoding="utf-8"):
-        line = line.strip()
-        if not line:
-            continue
-        row = json.loads(line)
-        if row.get("word"):
+    for src in sources:
+        for line in open(src["path"], encoding="utf-8"):
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            if not row.get("word") or (keep and not keep(row)):
+                continue
+            if len(sources) > 1:
+                row = {k: row[k] for k in KEPT_FIELDS if k in row}
+            row["_src"] = src
             by_word[row["word"]].append(row)
     return by_word
 
 
-def wiki_url(headword, lang_name):
+def wiki_url(headword, lang_name, host="vi.wiktionary.org"):
     """Le lien vers l'article du Wiktionnaire vietnamien dont vient l'entrée.
 
     Ancré sur la **langue**, pas sur la partie du discours, et c'est mesuré.
@@ -72,12 +89,14 @@ def wiki_url(headword, lang_name):
         return None
     page = urllib.parse.quote(headword.replace(" ", "_"), safe="_")
     anchor = urllib.parse.quote(lang_name.replace(" ", "_"), safe="_")
-    return f"https://vi.wiktionary.org/wiki/{page}#{anchor}"
+    return f"https://{host}/wiki/{page}#{anchor}"
 
 
-def build_senses(row):
+def build_senses(row, keep_sense=None):
     out = []
     for sense in row.get("senses", []):
+        if keep_sense and not keep_sense(sense):
+            continue
         glosses = [clean(g) for g in sense.get("glosses", []) if clean(g)]
         if not glosses:
             continue
@@ -86,7 +105,10 @@ def build_senses(row):
             src = clean(ex.get("text"))
             if not src:
                 continue
-            examples.append({"src": src, "vi": clean(ex.get("translation")) or None})
+            # `tr` : la traduction de l'exemple, dans la langue des gloses —
+            # le vietnamien pour Pháp–Việt, le français ou l'anglais pour
+            # Việt–Pháp.
+            examples.append({"src": src, "tr": clean(ex.get("translation")) or None})
         out.append({
             "gloss": glosses[0],
             "sub": glosses[1:],
@@ -106,27 +128,51 @@ def words_of(items):
     return list(seen)
 
 
-def build_entry(headword, rows, freq, code):
+def ipa_of(text):
+    """La transcription, si elle en est une.
+
+    Le Wiktionnaire vietnamien écrit /…/. Le français note la transcription
+    phonologique entre barres obliques inverses, \\an˧˧\\, et l'anglais
+    ne donne pour le vietnamien que la phonétique entre crochets, une par
+    dialecte. On ramène les premières aux barres obliques ; les crochets
+    restent tels quels, parce qu'ils ne disent pas la même chose.
+    """
+    text = text or ""
+    if len(text) > 2 and text[0] == text[-1] == "\\":
+        return f"/{text[1:-1]}/"
+    return text if text[:1] in ("/", "[") else None
+
+
+def build_entry(headword, rows, freq, code, morph=None):
     """Les lignes kaikki d'une même vedette -> une entrée, sections par catégorie."""
     blocks, ipa, audio = [], [], None
     derived, related, syn, ant = [], [], [], []
+    keep_sense = getattr(morph, "keep_sense", None)
+    label = getattr(morph, "label", None)
+    phonetic = code == "vi"
 
     for row in rows:
-        senses = build_senses(row)
+        senses = build_senses(row, keep_sense)
         if not senses:
             continue
+        src = row.get("_src") or {}
         blocks.append({
             "pos": row.get("pos") or "",
-            # pos_title est le vietnamien du Wiktionnaire, et il est plus fin
+            # L'étiquette de la catégorie, pour le lecteur. Pour Pháp–Việt et
+            # Anh–Việt, c'est le pos_title du Wiktionnaire vietnamien, plus fin
             # que pos : « Ngoại động từ » / « Nội động từ » là où pos dit
-            # « verb ». C'est une information écrite pour un lecteur vietnamien.
-            "pos_vi": clean(row.get("pos_title")) or None,
+            # « verb ». Pour Việt–Pháp, une étiquette française. Le nom de la
+            # clé date du temps où elle était toujours en vietnamien.
+            "pos_vi": (label(row) if label else clean(row.get("pos_title"))) or None,
+            # La langue des gloses du bloc : « vi », « fr » ou « en ».
+            "gloss_lang": src.get("gloss", "vi"),
             "tags": row.get("tags", []),
             "senses": senses,
         })
         for sound in row.get("sounds", []):
-            if sound.get("ipa") and sound["ipa"].startswith("/"):
-                ipa.append(sound["ipa"])
+            found = ipa_of(sound.get("ipa"))
+            if found and (phonetic or found.startswith("/")):
+                ipa.append(found)
             if audio is None and sound.get("mp3_url"):
                 audio = sound["mp3_url"]
         derived += words_of(row.get("derived"))
@@ -137,13 +183,25 @@ def build_entry(headword, rows, freq, code):
     if not blocks:
         return None
 
+    hosts = []
+    for row in rows:
+        src = row.get("_src") or {}
+        url = wiki_url(headword, src.get("section") or row.get("lang"),
+                       src.get("host", "vi.wiktionary.org"))
+        if url and url not in hosts and any(
+                b for b in blocks if b["gloss_lang"] == src.get("gloss", "vi")):
+            hosts.append(url)
+
     return {
         "id": f"{code}:{headword}",
         "lang": code,
         "headword": headword,
         # La section du Wiktionnaire d'où sort l'entrée — « Tiếng Pháp »,
         # « Tiếng Anh ». C'est kaikki qui la nomme, on ne la devine pas.
-        "wiki": wiki_url(headword, (rows[0].get("lang") if rows else None)),
+        "wiki": hosts[0] if hosts else None,
+        # Việt–Pháp sort de deux wikis : chaque bloc doit pouvoir renvoyer
+        # au sien.
+        "wikis": hosts,
         "rank": freq.get(headword, 0.0),
         "ipa": list(dict.fromkeys(ipa))[:3],
         "audio": audio,
@@ -203,7 +261,7 @@ def main():
 
     print(f"  {cfg['name']}")
     print("  lecture de kaikki…")
-    by_word = load_kaikki(cfg["kaikki"])
+    by_word = load_kaikki(S.kaikki_sources(code), getattr(morph, "keep", None))
     print(f"    {len(by_word):,} vedettes")
 
     # Les rattrapées, relues sur le wikitexte parce que wiktextract n'y voyait
@@ -225,6 +283,13 @@ def main():
     freq = morph.frequency()
     print(f"    {len(freq):,} lemmes classés par fréquence")
 
+    # Une langue peut réunir des vedettes que kaikki sépare — en vietnamien,
+    # « thuỷ » et « thủy », deux places du même ton.
+    if hasattr(morph, "merge"):
+        before = len(by_word)
+        by_word = morph.merge(by_word, freq)
+        print(f"    {before - len(by_word):,} vedettes fusionnées")
+
     # La coupe. Une vedette absente du classement a une fréquence de zéro et
     # passe donc en queue, ce qui est le bon comportement : ce sont les mots rares.
     ranked = sorted(by_word, key=lambda w: (-freq.get(w, 0.0), w))
@@ -232,7 +297,7 @@ def main():
 
     entries = {}
     for headword in kept:
-        entry = build_entry(headword, by_word[headword], freq, code)
+        entry = build_entry(headword, by_word[headword], freq, code, morph)
         if entry:
             entries[entry["id"]] = entry
 
@@ -241,13 +306,23 @@ def main():
     # La morphologie, après la coupe : on n'engendre que ce qui mène à une page.
     heads = {e["headword"] for e in entries.values()}
     kept_rows = {h: by_word.get(h, []) for h in heads}
-    conjugated, stats = morph.build(kept_rows)
+    conjugated, stats = morph.build(
+        {h: [{k: v for k, v in r.items() if k != "_src"} for r in rows]
+         for h, rows in kept_rows.items()})
     print(f"    morphologie : {stats}")
 
     index = collections.defaultdict(list)
     for form, lemma, analysis in conjugated:
         if form != lemma and lemma in heads:
             index[form].append({"lemma": lemma, "analysis": analysis})
+
+    # Les renvois : une vedette dont le seul sens était « autre forme de X »
+    # n'a pas de page, mais elle mène encore à X.
+    if hasattr(morph, "redirects"):
+        for form, lemma, analysis in morph.redirects(by_word):
+            if lemma in heads and form not in heads and all(
+                    t["lemma"] != lemma for t in index[form]):
+                index[form].append({"lemma": lemma, "analysis": analysis})
 
     # L'index à l'envers : lemme -> ses formes. Le construire une fois coûte un
     # parcours ; le redemander par entrée en coûtait autant que le produit des

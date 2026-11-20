@@ -40,6 +40,10 @@ PROBES = {
     "en": ["went", "children", "feet", "mice", "was", "ran", "better",
            "stopped", "carried", "going", "left", "saw", "book", "run",
            "good", "lying"],
+    # Việt–Pháp : le mot nu, le mot tapé sans accents, l'autre place du ton,
+    # un renvoi d'orthographe, et un mot que seul le Wiktionnaire anglais a.
+    "vi": ["ăn", "an", "tham nhũng", "tham nhung", "hoà", "hòa", "khoẻ",
+           "siễn", "nợ", "xe đẩy", "biết", "Hà Nội"],
 }
 
 

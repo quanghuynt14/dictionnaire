@@ -4,9 +4,9 @@
 Un seul endroit pour les URL, les chemins et les crédits. Le reste du pipeline
 importe d'ici et ne connaît aucune adresse.
 
-Deux dictionnaires en sortent — Pháp–Việt et Anh–Việt. Ils partagent tout le
-code et rien de leurs sources : c'est `LANGS` qui les sépare, et c'est le seul
-endroit où la différence est écrite.
+Trois dictionnaires en sortent — Pháp–Việt, Anh–Việt et Việt–Pháp. Ils
+partagent tout le code et rien de leurs sources : c'est `LANGS` qui les sépare,
+et c'est le seul endroit où la différence est écrite.
 """
 
 import pathlib
@@ -62,6 +62,47 @@ LANGS = {
             "SUBTLEX-US, Brysbaert & New — usage libre pour la recherche",
         ],
     },
+    # Le sens inverse : des vedettes vietnamiennes, glosées en français.
+    #
+    # Deux Wiktionnaires, et l'ordre compte. Le français d'abord : c'est la
+    # langue du dictionnaire. L'anglais ensuite, tel quel et marqué EN, parce
+    # que le Wiktionnaire anglais connaît deux fois plus de mots vietnamiens
+    # (36 489 contre 15 543, mesuré le 2026-11-20) et parce que ses sens sont
+    # souvent plus actuels — « tham nhũng » y est « to be corrupt », là où le
+    # français dit « Tracassier et cupide ».
+    #
+    # On ne traduit pas l'anglais en français. Ce serait une traduction
+    # automatique, que personne n'a écrite et que personne ne peut corriger
+    # sur un wiki.
+    "vi": {
+        "name": "Việt–Pháp",
+        "bundle": "Việt-Pháp",
+        "slug": "viet-phap",
+        "identifier": "fr.huy.viet-phap",
+        "kaikki_sources": [
+            {"key": "kaikki-vi-fr", "gloss": "fr",
+             "host": "fr.wiktionary.org", "section": "Vietnamien",
+             "url": ("https://kaikki.org/frwiktionary/Vietnamien/"
+                     "kaikki.org-dictionary-Vietnamien.jsonl"),
+             "path": SOURCES / "kaikki-vi-fr.jsonl"},
+            {"key": "kaikki-vi-en", "gloss": "en",
+             "host": "en.wiktionary.org", "section": "Vietnamese",
+             "url": ("https://kaikki.org/dictionary/Vietnamese/"
+                     "kaikki.org-dictionary-Vietnamese.jsonl"),
+             "path": SOURCES / "kaikki-vi-en.jsonl"},
+        ],
+        # rescue.py relit le wikitexte du Wiktionnaire *vietnamien*. Ici les
+        # deux sources sont d'autres éditions : il n'a rien à y faire.
+        "rescue": False,
+        "morphology": "morph_vi",
+        "credits": [
+            "Wiktionnaire français (fr.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "Wiktionary anglais (en.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "FrequencyWords, Hermit Dave, d'après OpenSubtitles — CC BY-SA 4.0",
+        ],
+    },
 }
 
 # --- morphologie française --------------------------------------------------
@@ -84,6 +125,32 @@ WORDNET_URL = ("https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/"
 SUBTLEX = SOURCES / "subtlex-us.txt"
 SUBTLEX_URL = ("https://raw.githubusercontent.com/hermitdave/FrequencyWords/"
                "master/content/2018/en/en_full.txt")
+
+
+# --- vietnamien ---------------------------------------------------------------
+
+# Les sous-titres encore, comme SUBTLEX pour l'anglais. Le fichier compte des
+# syllabes, pas des mots : le vietnamien s'écrit syllabe par syllabe, et le
+# corpus coupe aux espaces. morph_vi en tire un rang pour les mots composés.
+FREQ_VI = SOURCES / "frequence-vi.txt"
+FREQ_VI_URL = ("https://raw.githubusercontent.com/hermitdave/FrequencyWords/"
+               "master/content/2018/vi/vi_full.txt")
+
+
+def kaikki_sources(code):
+    """Les dumps kaikki d'une langue, dans l'ordre où leurs sens s'affichent.
+
+    Pháp–Việt et Anh–Việt en ont un, tiré du Wiktionnaire vietnamien.
+    Việt–Pháp en a deux. La forme est la même pour tous, et le pipeline ne
+    connaît qu'elle.
+    """
+    cfg = lang(code)
+    if "kaikki_sources" in cfg:
+        return cfg["kaikki_sources"]
+    section = "Tiếng Pháp" if code == "fr" else "Tiếng Anh"
+    return [{"key": f"kaikki-{code}", "gloss": "vi",
+             "host": "vi.wiktionary.org", "section": section,
+             "url": cfg["kaikki_url"], "path": cfg["kaikki"]}]
 
 
 def rescued(code):

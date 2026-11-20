@@ -76,14 +76,15 @@ def main():
 
     lock = {}
 
-    for code, cfg in S.LANGS.items():
-        download(cfg["kaikki_url"], cfg["kaikki"], force)
-        lock[f"kaikki-{code}"] = {
-            "url": cfg["kaikki_url"],
-            "sha256": digest(cfg["kaikki"]),
-            "bytes": cfg["kaikki"].stat().st_size,
-            "lines": sum(1 for _ in open(cfg["kaikki"], encoding="utf-8")),
-        }
+    for code in S.LANGS:
+        for src in S.kaikki_sources(code):
+            download(src["url"], src["path"], force)
+            lock[src["key"]] = {
+                "url": src["url"],
+                "sha256": digest(src["path"]),
+                "bytes": src["path"].stat().st_size,
+                "lines": sum(1 for _ in open(src["path"], encoding="utf-8")),
+            }
 
     # Français : Verbiste et Lexique viennent du dépôt voisin. Les deux projets
     # doivent parler de la même morphologie ; deux copies qui divergent seraient
@@ -101,9 +102,15 @@ def main():
                        for n in ("noun", "verb", "adj", "adv")}
     lock["frequence-en"] = {"url": S.SUBTLEX_URL, "sha256": digest(S.SUBTLEX)}
 
+    # Vietnamien : la fréquence des syllabes.
+    download(S.FREQ_VI_URL, S.FREQ_VI, force)
+    lock["frequence-vi"] = {"url": S.FREQ_VI_URL, "sha256": digest(S.FREQ_VI)}
+
     # Le rattrapage, après les dumps : il a besoin d'eux pour savoir quelles
     # vedettes sont sans glose.
-    for code in S.LANGS:
+    for code, cfg in S.LANGS.items():
+        if not cfg.get("rescue", True):
+            continue
         if force or not S.rescued(code).exists():
             print(f"  ↻ rattrapage {code}")
             subprocess.run([sys.executable, str(S.ROOT / "scripts" / "rescue.py"),
@@ -116,7 +123,8 @@ def main():
                       encoding="utf-8")
     print(f"\n  sources.lock écrit")
     for code in S.LANGS:
-        print(f"    kaikki-{code} : {lock[f'kaikki-{code}']['lines']:,} lignes")
+        for src in S.kaikki_sources(code):
+            print(f"    {src['key']} : {lock[src['key']]['lines']:,} lignes")
 
 
 if __name__ == "__main__":

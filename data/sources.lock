@@ -28,5 +28,21 @@
   "frequence-en": {
     "url": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/en/en_full.txt",
     "sha256": "7fea67ab954e2c01df6c608c9826e594cf36f8823b3243554f88245fb75dc506"
+  },
+  "kaikki-vi-fr": {
+    "url": "https://kaikki.org/frwiktionary/Vietnamien/kaikki.org-dictionary-Vietnamien.jsonl",
+    "sha256": "1703d633ca4d00962f0a8adad1043dbf8bd31e97a3c6fec5023b844d79532940",
+    "bytes": 16720315,
+    "lines": 18262
+  },
+  "kaikki-vi-en": {
+    "url": "https://kaikki.org/dictionary/Vietnamese/kaikki.org-dictionary-Vietnamese.jsonl",
+    "sha256": "186cd0a62d876dada70c9761bc05e598c8cf7b9a48e0aa518bab6c649e28d945",
+    "bytes": 83424329,
+    "lines": 52167
+  },
+  "frequence-vi": {
+    "url": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/vi/vi_full.txt",
+    "sha256": "b9063a8ec6a40fb22db9a2f8f5f90a06784669f235a95b25d5f28ae093ebaf07"
   }
 }

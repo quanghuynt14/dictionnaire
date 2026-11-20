@@ -97,6 +97,46 @@ autre source le pourrait.
 Ce qui reste : `make sync`, la boucle qui ramène une correction faite sur le
 site jusque dans les bundles.
 
+### Việt–Pháp, le sens inverse
+
+Un troisième dictionnaire, encore à l'essai : des mots vietnamiens, expliqués
+en français. `make mongo LANG=vi` le construit ; il tient en vingt secondes et
+500 Mo, sans morphologie à engendrer.
+
+Il lit deux Wiktionnaires, dans cet ordre :
+
+1. **le français**, section « Vietnamien » — la langue du dictionnaire ;
+2. **l'anglais**, section « Vietnamese », affiché tel quel et marqué EN. Il
+   connaît deux fois plus de mots vietnamiens, et ses sens sont souvent plus
+   actuels : « tham nhũng » y est « to be corrupt », là où le français dit
+   « Tracassier et cupide ».
+
+L'anglais n'est pas traduit en français. Une traduction automatique ne serait
+écrite par personne, et personne ne pourrait la corriger sur un wiki.
+
+| | Việt–Pháp |
+|---|---|
+| vedettes | 32 717 |
+| — en français seulement | 4 470 |
+| — en anglais seulement | 18 616 |
+| — dans les deux | 9 631 |
+| sens | 61 788 |
+| — avec exemple traduit | **31 %** |
+| clés tapées (sans accents, autre place du ton, renvois) | 28 165 |
+| pages de forme ambiguë | 2 587 |
+
+Ce que le pipeline fait propre à cette langue (`morph_vi.py`) :
+
+- **sans accents** : « an » mène à ăn, án, ấn, ẩn, ân…, les plus fréquents
+  d'abord ;
+- **la place du ton** : « hoà » et « hòa » sont une seule page. 485 mots
+  étaient coupés en deux, un par Wiktionnaire ;
+- **les renvois** : « siễn » mène à « suyễn ». La phrase « alternative form
+  of » n'est pas affichée.
+
+Les sinogrammes ne sont pas repris : ils décrivent l'écriture chinoise, pas
+un mot qu'on lit en quốc ngữ.
+
 ## Reconstruire depuis les sources
 
 Rien de tout ça n'est nécessaire pour *se servir* du dictionnaire — seulement

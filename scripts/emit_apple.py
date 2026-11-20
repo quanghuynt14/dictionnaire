@@ -101,11 +101,11 @@ def wiki_link(entry, indent="    "):
     Une entrée écrite à la main n'en a pas, et c'est juste : elle est ici
     précisément parce que le Wiktionnaire ne l'a pas.
     """
-    url = entry.get("wiki")
-    if not url:
-        return []
+    # Việt–Pháp sort de deux wikis, et chaque lien dit lequel.
+    urls = entry.get("wikis") or ([entry["wiki"]] if entry.get("wiki") else [])
     return [f'{indent}<div class="source"><a href="{attr(url)}">'
-            f'vi.wiktionary — {e(entry["headword"])}</a></div>']
+            f'{e(url.split("/")[2].removesuffix(".org"))} — {e(entry["headword"])}</a></div>'
+            for url in urls]
 
 
 def blocks_html(entry, indent="    "):
@@ -114,6 +114,10 @@ def blocks_html(entry, indent="    "):
     p = []
     for block in entry["blocks"]:
         label = block.get("pos_vi") or block.get("pos") or ""
+        # Dans Việt–Pháp, un bloc en anglais le dit, pour qu'on ne lise pas
+        # ses gloses comme du français.
+        if block.get("gloss_lang") == "en":
+            label = f"{label} · EN" if label else "EN"
         p.append(f'{indent}<div class="block">')
         if label:
             # Un sens pronominal ne s'emploie pas sous la vedette nue : on dit
@@ -133,9 +137,9 @@ def blocks_html(entry, indent="    "):
             if sense.get("examples"):
                 p.append(f'{indent}      <ul class="examples">')
                 for ex in sense["examples"]:
-                    vi = (f'<span class="ex-vi">{e(ex["vi"])}</span>'
-                          if ex.get("vi") else "")
-                    p.append(f'{indent}        <li><span class="ex-src">{e(ex["src"])}</span>{vi}</li>')
+                    tr = (f'<span class="ex-vi">{e(ex["tr"])}</span>'
+                          if ex.get("tr") else "")
+                    p.append(f'{indent}        <li><span class="ex-src">{e(ex["src"])}</span>{tr}</li>')
                 p.append(f'{indent}      </ul>')
             p.append(f'{indent}    </li>')
         p.append(f'{indent}  </ol>')

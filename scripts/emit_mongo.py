@@ -29,13 +29,26 @@ import sys
 
 import sources as S
 
-# La langue cible, côté practice. Ses constantes sont des noms anglais en
+# Les langues, côté practice. Ses constantes sont des noms anglais en
 # minuscules — voir packages/shared/src/constants.ts.
-TARGET = "vietnamese"
-SOURCE_OF = {"fr": "french", "en": "english"}
+SOURCE_OF = {"fr": "french", "en": "english", "vi": "vietnamese"}
+TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french"}
+
+# Việt–Pháp mêle deux langues de glose : le français, et l'anglais là où le
+# Wiktionnaire français se tait ou date. Un sens anglais porte cette marque,
+# pour qu'on ne le prenne pas pour du français.
+FOREIGN_MARK = {"en": "EN"}
 
 
-def translated_of(entry):
+def target_blocks(entry, code):
+    """Les blocs dans la langue cible, ou tous s'il n'y en a aucun."""
+    blocks = entry.get("blocks", [])
+    wanted = TARGET_OF[code][:2]
+    own = [b for b in blocks if b.get("gloss_lang", "vi") == wanted]
+    return own or blocks
+
+
+def translated_of(entry, code):
     """La ligne courte en haut de la page : les premières gloses, séparées.
 
     practice appelle ce champ `translated` et l'affiche seul dans les listes
@@ -43,9 +56,13 @@ def translated_of(entry):
     qui se suffise : les premières gloses de chaque catégorie, pas la première
     glose tout court, sinon un mot qui est nom *et* verbe ne montre que l'un
     des deux.
+
+    Pour Việt–Pháp, la ligne est en français dès qu'un sens français existe ;
+    l'anglais ne la remplit que pour les mots que le Wiktionnaire français
+    n'a pas.
     """
     out = []
-    for block in entry.get("blocks", []):
+    for block in target_blocks(entry, code):
         senses = block.get("senses") or []
         if senses and senses[0].get("gloss"):
             gloss = senses[0]["gloss"].rstrip(".")
@@ -70,10 +87,13 @@ def explains_of(entry):
     for block in entry.get("blocks", []):
         for sense in block.get("senses", []):
             examples = [
-                {"sourceSentence": ex["src"], "targetTranslation": ex["vi"]}
-                for ex in sense.get("examples", []) if ex.get("vi")
+                {"sourceSentence": ex["src"], "targetTranslation": ex["tr"]}
+                for ex in sense.get("examples", []) if ex.get("tr")
             ]
             explain = sense.get("gloss", "")
+            mark = FOREIGN_MARK.get(block.get("gloss_lang"))
+            if mark:
+                explain = f"[{mark}] {explain}"
             # La catégorie grammaticale devant le sens : « Danh từ » contre
             # « Ngoại động từ » est souvent ce qui sépare deux acceptions, et
             # `explains` n'a pas de champ pour la porter.
@@ -94,6 +114,7 @@ def main():
     code = argv[argv.index("--lang") + 1] if "--lang" in argv else "fr"
     cfg = S.lang(code)
     source = SOURCE_OF[code]
+    target = TARGET_OF[code]
 
     lexicon = [json.loads(l) for l in
                open(S.BUILD / f"lexicon-{code}.jsonl", encoding="utf-8") if l.strip()]
@@ -112,13 +133,14 @@ def main():
                 "_collection": "dictionary",
                 "word": entry["headword"],
                 "sourceLanguage": source,
-                "targetLanguage": TARGET,
-                "translated": translated_of(entry),
+                "targetLanguage": target,
+                "translated": translated_of(entry, code),
                 "explains": explains,
                 # Ce que la version LLM n'avait pas, et qui vient de la source.
                 "ipa": entry.get("ipa") or [],
                 "audio": entry.get("audio"),
                 "wiki": entry.get("wiki"),
+                "wikis": entry.get("wikis") or [],
                 "derived": (entry.get("derived") or [])[:12],
                 "rank": entry.get("rank", 0.0),
                 "edited": bool(entry.get("edited")),
