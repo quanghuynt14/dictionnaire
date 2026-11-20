@@ -183,6 +183,10 @@ class Rank:
             return default
         counts = [self.counts.get(s, 0.0) for s in syllables]
         value = min(counts) / (10 ** (len(syllables) - 1))
+        # Le corpus est en minuscules : « Người » (un nom propre) et
+        # « người » y ont le même compte. Taper « nguoi » veut dire le second.
+        if word[:1].isupper():
+            value /= 2
         return value or default
 
 
