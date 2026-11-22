@@ -25,6 +25,7 @@ Usage :  python3 scripts/emit_mongo.py --lang fr
 """
 
 import json
+import re
 import sys
 
 import sources as S
@@ -38,6 +39,51 @@ TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french"}
 # Wiktionnaire français se tait ou date. Un sens anglais porte cette marque,
 # pour qu'on ne le prenne pas pour du français.
 FOREIGN_MARK = {"en": "EN"}
+
+
+def own_entries(code):
+    """Les entrées reindoo, par mot. Seul Việt–Pháp en a, voir
+    import_reindoo.py."""
+    path = S.ROOT / "data" / f"reindoo-{code}.jsonl"
+    if not path.exists():
+        return {}
+    return {e["word"]: e for e in map(json.loads, open(path, encoding="utf-8")) if e}
+
+
+def own_explains(own):
+    """Les sens reindoo, dans la forme `explains`, avec deux champs de plus.
+
+    `note` porte ce qu'un francophone se trompe à faire ; `source` les
+    distingue des sens du Wiktionnaire, que l'app affiche à part, en dessous.
+    Les étiquettes suivent la catégorie, comme [EN] : « (Verbe) [Nord] … ».
+    """
+    out = []
+    for sense in own["senses"]:
+        labels = "".join(f"[{l}] " for l in sense["labels"])
+        explain = f"({sense['pos']}) {labels}{sense['gloss']}"
+        item = {
+            "explain": explain,
+            "synonyms": [],
+            "antonyms": [],
+            "exampleSentences": [{"sourceSentence": ex["src"], "targetTranslation": ex["tr"]}
+                                 for ex in sense["examples"]],
+            "source": "reindoo",
+        }
+        if sense.get("note"):
+            item["note"] = sense["note"]
+        out.append(item)
+    return out
+
+
+def own_translated(own):
+    """La ligne courte, tirée des trois premiers sens, sans leurs précisions
+    entre parenthèses : « être / alors, et / rien que, que des »."""
+    out = []
+    for sense in own["senses"]:
+        gloss = re.sub(r"\s*\([^)]*\)", "", sense["gloss"]).strip(" ,;")
+        if gloss and gloss not in out:
+            out.append(gloss)
+    return " / ".join(out[:3])
 
 
 def target_blocks(entry, code):
@@ -120,12 +166,19 @@ def main():
                open(S.BUILD / f"lexicon-{code}.jsonl", encoding="utf-8") if l.strip()]
     forms = json.load(open(S.BUILD / f"forms-{code}.json", encoding="utf-8"))
     heads = {e["headword"] for e in lexicon}
+    own = own_entries(code)
+    missing = sorted(set(own) - heads)
+    if missing:
+        raise SystemExit(f"entrées reindoo sans vedette : {missing[:10]}")
 
     out = S.BUILD / f"mongo-{code}.ndjson"
     n_words = n_forms = 0
     with open(out, "w", encoding="utf-8") as f:
         for entry in lexicon:
             explains = explains_of(entry)
+            mine = own.get(entry["headword"])
+            if mine:
+                explains = own_explains(mine) + explains
             if not explains:
                 continue
             n_words += 1
@@ -134,7 +187,7 @@ def main():
                 "word": entry["headword"],
                 "sourceLanguage": source,
                 "targetLanguage": target,
-                "translated": translated_of(entry, code),
+                "translated": own_translated(mine) if mine else translated_of(entry, code),
                 "explains": explains,
                 # Ce que la version LLM n'avait pas, et qui vient de la source.
                 "ipa": entry.get("ipa") or [],
@@ -171,6 +224,8 @@ def main():
 
     size = out.stat().st_size
     print(f"  {cfg['name']} : {n_words:,} vedettes + {n_forms:,} formes")
+    if own:
+        print(f"  dont {len(own):,} avec une entrée reindoo en tête")
     print(f"  → {out.relative_to(S.ROOT)} ({size / 1e6:.1f} Mo)")
 
 

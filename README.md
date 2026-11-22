@@ -137,6 +137,37 @@ Ce que le pipeline fait propre à cette langue (`morph_vi.py`) :
 Les sinogrammes ne sont pas repris : ils décrivent l'écriture chinoise, pas
 un mot qu'on lit en quốc ngữ.
 
+#### Les mille entrées reindoo
+
+Pour les 1 000 mots vietnamiens les plus fréquents, une entrée écrite pour
+un francophone passe **avant** les sens du Wiktionnaire. Elle donne des
+équivalents français, un sens par différence à apprendre, des étiquettes
+([familier], [Nord], [clf: con]…), des exemples traduits et une note sur
+l'erreur qu'un francophone fait. Les sens du Wiktionnaire suivent, tels quels.
+
+Ces entrées ne sont pas du Wiktionnaire. Claude Opus les a rédigées à partir
+des deux Wiktionnaires et de vraies phrases (sous-titres, TED, Tatoeba). Un
+second Opus les a ensuite relues. Aucun humain ne les a encore relues.
+
+- `data/reindoo-vi.jsonl` : les entrées, une par ligne ;
+- `scripts/import_reindoo.py` : le fichier vient du `entries.md` de l'étude ;
+- `emit_mongo.py` les place en tête, avec `"source": "reindoo"` et la note
+  dans `note`. Leur ligne courte (`translated`) remplace celle du
+  Wiktionnaire.
+
+Sur 4 922 exemples, 2 450 sont de vraies phrases, reprises ou raccourcies. Leur
+source, dans le corpus aligné français–vietnamien d'[OPUS](https://opus.nlpl.eu) :
+
+| Source | Exemples | Licence |
+|---|---|---|
+| [OpenSubtitles](https://www.opensubtitles.org), via OPUS (Lison et Tiedemann, 2016) | 1 408 | sous-titres d'utilisateurs ; OPUS les redistribue sans licence propre |
+| [TED](https://www.ted.com) : NeuLab-TedTalks et TED2020 | 1 038 | [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) |
+| [Tatoeba](https://tatoeba.org) | 4 | [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/) |
+
+Les autres exemples sont écrits pour l'entrée. Aucun ne vient de QED : sa
+licence le réserve à la recherche. `drop_qed.py`, dans l'étude, les retire
+avant l'import.
+
 ## Reconstruire depuis les sources
 
 Rien de tout ça n'est nécessaire pour *se servir* du dictionnaire — seulement
