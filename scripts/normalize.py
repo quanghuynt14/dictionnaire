@@ -247,6 +247,42 @@ def apply_edits(entries, code):
     return n
 
 
+MEMO_KEYS = ("origin", "related", "tip")
+
+
+def apply_memos(entries, code):
+    """Les notes « pour retenir » : d'où vient le mot, ses voisins, un mémo.
+
+    Elles vivent dans `data/memo-<langue>.jsonl`, une ligne par mot, écrites
+    à la main (ou par l'outil MCP `dico_meo`) et marquées `"by": "huy"`. Un
+    mot n'en a pas forcément : « aller » n'a rien à raconter, « morgue » si.
+    Elles s'ajoutent à l'entrée sans rien remplacer — ni sens, ni marque
+    `edited`, car le dictionnaire, lui, n'a pas changé.
+
+    Une note sur une vedette absente est dite, pas avalée : c'est une faute de
+    frappe dans l'id, ou un mot que la coupe `--top` a laissé dehors.
+    """
+    path = S.ROOT / "data" / f"memo-{code}.jsonl"
+    if not path.exists():
+        return 0, []
+    n, orphans = 0, []
+    for line in open(path, encoding="utf-8"):
+        line = line.strip()
+        if not line or line.startswith("//"):
+            continue
+        row = json.loads(line)
+        memo = {k: row[k].strip() for k in MEMO_KEYS if isinstance(row.get(k), str) and row[k].strip()}
+        if not memo:
+            continue
+        entry = entries.get(row.get("id"))
+        if entry is None:
+            orphans.append(row.get("id"))
+            continue
+        entry["memo"] = memo
+        n += 1
+    return n, orphans
+
+
 def main():
     argv = sys.argv[1:]
     code = argv[argv.index("--lang") + 1] if "--lang" in argv else "fr"
@@ -302,6 +338,7 @@ def main():
             entries[entry["id"]] = entry
 
     n_edits = apply_edits(entries, code)
+    n_memos, memo_orphans = apply_memos(entries, code)
 
     # La morphologie, après la coupe : on n'engendre que ce qui mène à une page.
     heads = {e["headword"] for e in entries.values()}
@@ -362,6 +399,10 @@ def main():
           f"{len(index):,} formes fléchies indexées")
     if n_edits:
         print(f"  {n_edits} retouches appliquées")
+    if n_memos:
+        print(f"  {n_memos} notes pour retenir")
+    if memo_orphans:
+        print(f"  ⚠ notes sans vedette : {memo_orphans[:10]}")
     print(f"  → {out.relative_to(S.ROOT)}")
 
 

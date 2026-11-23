@@ -1,0 +1,7 @@
+// Les notes « pour retenir » (anglais). Une ligne par mot, en vietnamien : d'où vient le
+// mot (« origin »), ses voisins (« related »), un mémo (« tip »). Toutes les
+// trois sont facultatives. **gras** et *italique* passent jusqu'à l'app.
+//
+// Un mot courant n'en a pas besoin : on les écrit pour les mots qui ont une
+// histoire. Chaque ligne porte "by" et la date. Pour les retrouver :
+//   grep -h '^{"id"' data/memo-*.jsonl

@@ -197,6 +197,8 @@ def main():
                 "derived": (entry.get("derived") or [])[:12],
                 "rank": entry.get("rank", 0.0),
                 "edited": bool(entry.get("edited")),
+                # Ce qui aide à retenir le mot, quand quelqu'un l'a écrit.
+                **({"memo": entry["memo"]} if entry.get("memo") else {}),
             }, ensure_ascii=False) + "\n")
 
         for form, targets in forms.items():
