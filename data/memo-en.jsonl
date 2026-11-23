@@ -3,5 +3,8 @@
 // trois sont facultatives. **gras** et *italique* passent jusqu'à l'app.
 //
 // Un mot courant n'en a pas besoin : on les écrit pour les mots qui ont une
-// histoire. Chaque ligne porte "by" et la date. Pour les retrouver :
-//   grep -h '^{"id"' data/memo-*.jsonl
+// histoire. Chaque ligne porte "by" — « huy » quand il l'a écrite ou
+// approuvée, « claude » quand Claude l'a écrite seul — et la date. Celles de
+// Claude citent dans "sources" la révision du Wiktionnaire lue : l'origine
+// n'y dit rien que cette révision ne dise ; seul le mémo est inventé.
+//   grep -h '^{"id": "[^"]*", "by": "claude"' data/memo-*.jsonl

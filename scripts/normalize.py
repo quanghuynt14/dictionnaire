@@ -254,8 +254,9 @@ def apply_memos(entries, code):
     """Les notes « pour retenir » : d'où vient le mot, ses voisins, un mémo.
 
     Elles vivent dans `data/memo-<langue>.jsonl`, une ligne par mot, écrites
-    à la main (ou par l'outil MCP `dico_meo`) et marquées `"by": "huy"`. Un
-    mot n'en a pas forcément : « aller » n'a rien à raconter, « morgue » si.
+    à la main ou par l'outil MCP `dico_meo`, et marquées `"by": "huy"` ou
+    `"by": "claude"`. Un mot n'en a pas forcément : « aller » n'a rien à
+    raconter, « morgue » si.
     Elles s'ajoutent à l'entrée sans rien remplacer — ni sens, ni marque
     `edited`, car le dictionnaire, lui, n'a pas changé.
 
