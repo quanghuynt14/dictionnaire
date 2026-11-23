@@ -5,3 +5,4 @@
 // Un mot courant n'en a pas besoin : on les écrit pour les mots qui ont une
 // histoire. Chaque ligne porte "by" et la date. Pour les retrouver :
 //   grep -h '^{"id"' data/memo-*.jsonl
+{"id": "fr:morgue", "by": "huy", "added": "2026-11-23", "origin": "Từ này đến từ động từ cổ *morguer*, nghĩa là nhìn ai đó chằm chằm, từ trên xuống, một cách kiêu ngạo. Vì thế nghĩa đầu tiên của *morgue* là **vẻ kiêu căng**. Theo cách giải thích thường gặp, *la morgue* về sau là gian phòng trong nhà tù, nơi cai ngục **nhìn kỹ** tù nhân mới đến để nhớ mặt. Sau đó ở Paris, *la Morgue* là nơi đặt các xác chết vô danh để người dân đến **nhìn mặt** và nhận diện, từ đó mới có nghĩa **nhà xác**.", "related": "*morguer* (nhìn khinh khỉnh, văn chương). Tiếng Anh *morgue* (nhà xác) được mượn từ tiếng Pháp.", "tip": "*Morgue* là **chỗ của những ánh nhìn**: lúc đầu là ánh nhìn kiêu căng, sau là cái nhìn để nhận mặt người chết."}
