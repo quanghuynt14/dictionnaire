@@ -208,6 +208,46 @@ Ce que le pipeline fait propre à cette langue (`morph_zh.py`) :
 Champs en plus dans `mongo-zh.ndjson`, ignorés par qui ne les lit pas :
 `hanviet`, `traditional`, `variants`, et `pinyin` sur chaque exemple.
 
+Les mots fréquents que le Wiktionnaire vietnamien n'a pas — 842 des 1 000
+premiers n'ont que des sens anglais — reçoivent des sens vietnamiens écrits
+par Claude : `data/han-zh.jsonl`. `emit_mongo` les place devant les sens [EN],
+avec `"source": "reindoo"`, comme les entrées de Việt–Pháp.
+
+### Việt–Trung, le sens inverse
+
+Un cinquième : des mots vietnamiens, traduits en chinois. Aucun dictionnaire
+libre ne fait ce chemin. Les entrées sont donc écrites par Claude sur preuves
+(Wiktionnaires, TED, Tatoeba), puis relues par un second Claude — la méthode
+mesurée dans `research/vi-zh-study`. Elles sont dans `data/han-vz.jsonl`,
+chacune marquée `"by": "claude"`.
+
+```bash
+make mongo LANG=vz      # → build/mongo-vz.ndjson
+```
+
+Le dictionnaire ne contient que ces vedettes. Sous leurs sens viennent ceux
+du Wiktionnaire anglais, marqués EN.
+
+Chaque équivalent porte une étiquette, calculée sur les sources, jamais par
+le rédacteur :
+
+- **« Wiktionary ✓ »** : un Wiktionnaire donne aussi cette traduction ;
+- **« Kho câu ✓ »** : le corpus TED l'atteste (au moins 3 cooccurrences,
+  dans les 20 premières) ;
+- **aucune** : Claude l'a écrite, personne ne l'a vérifiée. Le texte du sens
+  le dit : « 别人 biérén (chưa đối chiếu) ».
+
+Champs en plus : `equivalents` (les équivalents un par un, avec leurs
+étiquettes) et `by` sur chaque sens écrit ; `etymon` (le mot chinois d'où vient
+un mot Hán Việt — une étymologie, pas une traduction) et `by` sur l'entrée.
+Les exemples ne viennent jamais de TED, dont la licence interdit la
+publication : ils sont écrits pour l'entrée ou repris de Tatoeba.
+
+Bâtir Trung–Việt en local sans le dump entier, pour vérifier des entrées
+écrites : `fetch.py --lang zh --words FICHIER` ne garde que les vedettes
+listées (avec leurs graphies traditionnelles). Supprimer ensuite
+`data/sources/kaikki-zh-en.jsonl` : `fetch.py` le croirait complet.
+
 ## Reconstruire depuis les sources
 
 Rien de tout ça n'est nécessaire pour *se servir* du dictionnaire — seulement

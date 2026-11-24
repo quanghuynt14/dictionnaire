@@ -7,12 +7,15 @@ artefact compilé : quand une entrée a l'air fausse, la première question est
 supposition. Avec, c'est une ligne de fichier.
 
 Usage :  python3 scripts/fetch.py [--force]
-         python3 scripts/fetch.py --lang zh [--limit N]
+         python3 scripts/fetch.py --lang zh [--limit N | --words FICHIER]
 
 Sans --lang, toutes les langues sauf les optionnelles (Trung–Việt). Avec,
 cette langue seule, et le verrou garde ce qu'il savait des autres.
 `--limit N` s'arrête après N lignes d'un dump filtré : un échantillon pour
 travailler sur une petite machine. Il n'écrit pas le verrou.
+`--words FICHIER` lit tout le dump mais n'en garde que les vedettes listées
+(une par ligne) : de quoi bâtir en local les entrées qu'on vient d'écrire,
+sans les 140 000 autres. Il n'écrit pas le verrou non plus.
 """
 
 import hashlib
@@ -45,7 +48,7 @@ def download(url, dest, force):
         shutil.copyfileobj(r, f)
 
 
-def download_slim(src, force, limit=None):
+def download_slim(src, force, limit=None, words=None):
     """Un dump trop gros pour le disque : filtré ligne à ligne en arrivant.
 
     Le fichier anglais du chinois pèse 1,2 Go, dont l'essentiel est du
@@ -57,7 +60,7 @@ def download_slim(src, force, limit=None):
     quel export kaikki vient le fichier.
     """
     dest = src["path"]
-    if dest.exists() and not force and limit is None:
+    if dest.exists() and not force and limit is None and words is None:
         print(f"  = {dest.name} déjà là")
         return None
     slim = importlib.import_module(src["slim"]).slim
@@ -70,7 +73,7 @@ def download_slim(src, force, limit=None):
             size += len(line)
             raw += 1
             row = slim(json.loads(line)) if line.strip() else None
-            if row:
+            if row and (words is None or row["word"] in words):
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
                 kept += 1
             if limit and raw >= limit:
@@ -81,10 +84,10 @@ def download_slim(src, force, limit=None):
             "lines": raw, "kept": kept, "kept_sha256": digest(dest)}
 
 
-def fetch_kaikki(src, force, limit=None):
+def fetch_kaikki(src, force, limit=None, words=None):
     """Un dump kaikki, et ce que le verrou en dit."""
     if src.get("slim"):
-        entry = download_slim(src, force, limit)
+        entry = download_slim(src, force, limit, words)
         if entry is None:
             # Déjà là : on garde ce que le verrou savait du dump brut.
             entry = json.loads(S.LOCK.read_text()).get(src["key"]) if S.LOCK.exists() else None
@@ -98,13 +101,13 @@ def fetch_kaikki(src, force, limit=None):
     }
 
 
-def fetch_zh(force, limit=None):
+def fetch_zh(force, limit=None, words=None):
     """Trung–Việt : ses trois dumps, les lectures Hán Việt, la fréquence et
     la table traditionnel -> simplifié."""
     lock = {}
     cfg = S.lang("zh")
     for src in S.kaikki_sources("zh") + cfg.get("extra_sources", []):
-        lock[src["key"]] = fetch_kaikki(src, force, limit)
+        lock[src["key"]] = fetch_kaikki(src, force, limit, words)
     download(S.FREQ_ZH_URL, S.FREQ_ZH, force)
     lock["frequence-zh"] = {"url": S.FREQ_ZH_URL, "sha256": digest(S.FREQ_ZH)}
     download(S.OPENCC_TS_URL, S.OPENCC_TS, force)
@@ -149,6 +152,10 @@ def main():
     force = "--force" in argv
     only = argv[argv.index("--lang") + 1] if "--lang" in argv else None
     limit = int(argv[argv.index("--limit") + 1]) if "--limit" in argv else None
+    words = None
+    if "--words" in argv:
+        path = argv[argv.index("--words") + 1]
+        words = {l.strip() for l in open(path, encoding="utf-8") if l.strip()}
     S.SOURCES.mkdir(parents=True, exist_ok=True)
 
     # Une langue seule : on complète le verrou au lieu de le réécrire.
@@ -156,9 +163,10 @@ def main():
         S.lang(only)
         if only != "zh":
             sys.exit("--lang ne sert aujourd'hui qu'à zh.")
-        fresh = fetch_zh(force, limit)
-        if limit:
-            print(f"\n  échantillon de {limit:,} lignes : sources.lock inchangé")
+        fresh = fetch_zh(force, limit, words)
+        if limit or words:
+            what = f"{limit:,} lignes" if limit else f"{len(words):,} vedettes"
+            print(f"\n  échantillon de {what} : sources.lock inchangé")
             return
         lock = json.loads(S.LOCK.read_text()) if S.LOCK.exists() else {}
         lock.update(fresh)

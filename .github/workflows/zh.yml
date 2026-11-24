@@ -9,6 +9,7 @@ on:
     branches: [han]
     paths:
       - scripts/**
+      - data/han-zh.jsonl
       - .github/workflows/zh.yml
 
 jobs:

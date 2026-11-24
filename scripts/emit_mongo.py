@@ -32,55 +32,134 @@ import sources as S
 
 # Les langues, côté practice. Ses constantes sont des noms anglais en
 # minuscules — voir packages/shared/src/constants.ts.
-SOURCE_OF = {"fr": "french", "en": "english", "vi": "vietnamese", "zh": "chinese"}
-TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french", "zh": "vietnamese"}
+SOURCE_OF = {"fr": "french", "en": "english", "vi": "vietnamese", "zh": "chinese",
+             "vz": "vietnamese"}
+TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french", "zh": "vietnamese",
+             "vz": "chinese"}
 
 # Việt–Pháp mêle deux langues de glose : le français, et l'anglais là où le
 # Wiktionnaire français se tait ou date. Un sens anglais porte cette marque,
 # pour qu'on ne le prenne pas pour du français.
 FOREIGN_MARK = {"en": "EN"}
 
+# Un équivalent que ni le Wiktionnaire ni le corpus ne confirme : Claude l'a
+# écrit, personne ne l'a encore vérifié. Mesuré dans vi-zh-study, ces
+# équivalents-là sont justes 62 % du temps, contre 91 % pour ceux que le
+# Wiktionnaire donne aussi. Le lecteur doit le savoir.
+UNCONFIRMED = "chưa đối chiếu"
+
 
 def own_entries(code):
-    """Les entrées reindoo, par mot. Seul Việt–Pháp en a, voir
-    import_reindoo.py."""
-    path = S.ROOT / "data" / f"reindoo-{code}.jsonl"
+    """Les entrées écrites pour reindoo, par mot : Việt–Pháp
+    (data/reindoo-vi.jsonl, voir import_reindoo.py), Trung–Việt et Việt–Trung
+    (data/han-zh.jsonl, data/han-vz.jsonl, les brouillons de Claude relus)."""
+    path = S.own_path(code)
     if not path.exists():
         return {}
     return {e["word"]: e for e in map(json.loads, open(path, encoding="utf-8")) if e}
 
 
-def own_explains(own):
-    """Les sens reindoo, dans la forme `explains`, avec deux champs de plus.
+def _equivalents(items, key, reading=None):
+    """« 学生 xuésheng, 学员 xuéyuán (chưa đối chiếu) » : chaque équivalent,
+    sa lecture, et la marque de ceux qu'aucune source ne confirme."""
+    out = []
+    for it in items:
+        text = it[key] + (f" {it[reading]}" if reading and it.get(reading) else "")
+        if not it.get("labels"):
+            text += f" ({UNCONFIRMED})"
+        out.append(text)
+    return ", ".join(out)
 
-    `note` porte ce qu'un francophone se trompe à faire ; `source` les
-    distingue des sens du Wiktionnaire, que l'app affiche à part, en dessous.
-    Les étiquettes suivent la catégorie, comme [EN] : « (Verbe) [Nord] … ».
+
+def own_explain_text(sense):
+    """Le sens en une ligne, selon la forme de l'entrée.
+
+    - Việt–Pháp : `gloss`, déjà écrit.
+    - Trung–Việt : `vi`, des équivalents vietnamiens, et `hint` entre
+      parenthèses : « (Đại từ) gì, cái gì (hỏi về sự vật) ».
+    - Việt–Trung : `zh`, des équivalents chinois avec leur pinyin, précédés
+      du sens vietnamien quand le mot en a plusieurs :
+      « (Danh từ) người đi học: 学生 xuésheng ».
+    """
+    labels = "".join(f"[{l}] " for l in sense.get("labels") or [])
+    if "zh" in sense:
+        body = _equivalents(sense["zh"], "hanzi", "pinyin")
+        if sense.get("sense"):
+            body = f"{sense['sense']}: {body}"
+    elif "vi" in sense:
+        body = _equivalents(sense["vi"], "w")
+        if sense.get("hint"):
+            body += f" ({sense['hint']})"
+    else:
+        body = sense["gloss"]
+    return f"({sense['pos']}) {labels}{body}"
+
+
+def own_examples(sense):
+    """Les exemples, dans la forme `exampleSentences`. La phrase source est
+    dans la langue de la vedette ; le pinyin, quand il y a du chinois, va
+    dans la clé `pinyin`, comme pour les exemples du Wiktionnaire."""
+    out = []
+    for ex in sense.get("examples") or []:
+        if "src" in ex:
+            src, tr = ex["src"], ex["tr"]
+        elif "vi" in sense:          # Trung–Việt : chinois -> vietnamien
+            src, tr = ex["zh"], ex["vi"]
+        else:                        # Việt–Trung : vietnamien -> chinois
+            src, tr = ex["vi"], ex["zh"]
+        item = {"sourceSentence": src, "targetTranslation": tr}
+        if ex.get("pinyin"):
+            item["pinyin"] = ex["pinyin"]
+        out.append(item)
+    return out
+
+
+def own_explains(own):
+    """Les sens écrits, dans la forme `explains`, avec quelques champs de plus.
+
+    `note` porte l'erreur que le lecteur risque ; `source` les distingue des
+    sens du Wiktionnaire, que l'app affiche à part, en dessous. Les étiquettes
+    suivent la catégorie, comme [EN] : « (Verbe) [Nord] … ».
+
+    Pour les entrées de Claude : `by`, et `equivalents`, les équivalents un
+    par un avec leurs étiquettes de vérification (« Wiktionary ✓ »,
+    « Kho câu ✓ », ou aucune), pour qu'une app qui les lit puisse les
+    afficher autrement que dans le texte.
     """
     out = []
     for sense in own["senses"]:
-        labels = "".join(f"[{l}] " for l in sense["labels"])
-        explain = f"({sense['pos']}) {labels}{sense['gloss']}"
         item = {
-            "explain": explain,
+            "explain": own_explain_text(sense),
             "synonyms": [],
             "antonyms": [],
-            "exampleSentences": [{"sourceSentence": ex["src"], "targetTranslation": ex["tr"]}
-                                 for ex in sense["examples"]],
+            "exampleSentences": own_examples(sense),
             "source": "reindoo",
         }
         if sense.get("note"):
             item["note"] = sense["note"]
+        if own.get("by"):
+            item["by"] = own["by"]
+        if "zh" in sense:
+            item["equivalents"] = [{k: e[k] for k in ("hanzi", "pinyin", "labels")}
+                                   for e in sense["zh"]]
+        elif "vi" in sense:
+            item["equivalents"] = [{k: e[k] for k in ("w", "labels")} for e in sense["vi"]]
         out.append(item)
     return out
 
 
 def own_translated(own):
     """La ligne courte, tirée des trois premiers sens, sans leurs précisions
-    entre parenthèses : « être / alors, et / rien que, que des »."""
+    entre parenthèses : « être / alors, et / rien que, que des ». Pour les
+    entrées de Claude, le premier équivalent de chaque sens : « 学生 / 同学 »."""
     out = []
     for sense in own["senses"]:
-        gloss = re.sub(r"\s*\([^)]*\)", "", sense["gloss"]).strip(" ,;")
+        if "zh" in sense:
+            gloss = sense["zh"][0]["hanzi"] if sense["zh"] else ""
+        elif "vi" in sense:
+            gloss = sense["vi"][0]["w"] if sense["vi"] else ""
+        else:
+            gloss = re.sub(r"\s*\([^)]*\)", "", sense["gloss"]).strip(" ,;")
         if gloss and gloss not in out:
             out.append(gloss)
     return " / ".join(out[:3])
@@ -174,12 +253,17 @@ def main():
     if missing:
         raise SystemExit(f"entrées reindoo sans vedette : {missing[:10]}")
 
+    # Việt–Trung n'est fait que de ses entrées : le Wiktionnaire complète,
+    # il n'ajoute pas de vedettes.
+    only_own = bool(cfg.get("own_only"))
     out = S.BUILD / f"mongo-{code}.ndjson"
     n_words = n_forms = 0
     with open(out, "w", encoding="utf-8") as f:
         for entry in lexicon:
             explains = explains_of(entry)
             mine = own.get(entry["headword"])
+            if only_own and not mine:
+                continue
             if mine:
                 explains = own_explains(mine) + explains
             if not explains:
@@ -206,6 +290,12 @@ def main():
                 # et les autres graphies. `ipa` y porte le pinyin.
                 **{k: entry[k] for k in ("hanviet", "traditional", "variants")
                    if entry.get(k)},
+                # Việt–Trung : le mot chinois dont vient un mot Hán Việt
+                # (« 學生 » pour học sinh). Une étymologie, pas une
+                # traduction : le chinois moderne a souvent dérivé (bệnh viện
+                # se dit 医院, pas 病院). Et l'auteur de l'entrée.
+                **({"etymon": mine["etymon"]} if mine and mine.get("etymon") else {}),
+                **({"by": mine["by"]} if only_own and mine and mine.get("by") else {}),
             }, ensure_ascii=False) + "\n")
 
         for form, targets in forms.items():

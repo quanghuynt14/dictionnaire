@@ -4,7 +4,8 @@
 Un seul endroit pour les URL, les chemins et les crédits. Le reste du pipeline
 importe d'ici et ne connaît aucune adresse.
 
-Quatre dictionnaires en sortent — Pháp–Việt, Anh–Việt, Việt–Pháp et Trung–Việt. Ils
+Cinq dictionnaires en sortent — Pháp–Việt, Anh–Việt, Việt–Pháp, Trung–Việt et
+Việt–Trung. Ils
 partagent tout le code et rien de leurs sources : c'est `LANGS` qui les sépare,
 et c'est le seul endroit où la différence est écrite.
 """
@@ -151,6 +152,10 @@ LANGS = {
         # Les lectures Hán Việt : la section vietnamienne du Wiktionnaire
         # anglais, la même que Việt–Pháp.
         "extra_sources": [VIETNAMESE_EN],
+        # Les sens vietnamiens écrits par Claude pour les mots fréquents que le
+        # Wiktionnaire vietnamien n'a pas (voir emit_mongo.own_entries). Ils
+        # passent devant les sens [EN].
+        "own": ROOT / "data" / "han-zh.jsonl",
         "rescue": False,
         "morphology": "morph_zh",
         "credits": [
@@ -161,6 +166,35 @@ LANGS = {
             "FrequencyWords, Hermit Dave, d'après OpenSubtitles — CC BY-SA 4.0",
             "OpenCC, BYVoid et contributeurs (table traditionnel → simplifié) "
             "— Apache 2.0",
+        ],
+    },
+    # Des vedettes vietnamiennes, traduites en chinois (mandarin). Le sens
+    # inverse de Trung–Việt, pour « Reindoo Hán ».
+    #
+    # Aucun dictionnaire libre ne va du vietnamien au chinois. Les entrées
+    # sont donc écrites par Claude, sur preuves (méthode D de dict-study,
+    # mesurée dans research/vi-zh-study) : data/han-vz.jsonl, chacune marquée
+    # `"by": "claude"`, chaque équivalent avec son étiquette de vérification.
+    # Le dictionnaire ne contient **que** ces vedettes (`own_only`) ; sous
+    # leurs sens viennent ceux du Wiktionnaire anglais, marqués EN, comme
+    # pour Việt–Pháp.
+    "vz": {
+        "name": "Việt–Trung",
+        "bundle": "Việt-Trung",
+        "slug": "viet-trung",
+        "identifier": "fr.huy.viet-trung",
+        "kaikki_sources": [VIETNAMESE_EN],
+        "own": ROOT / "data" / "han-vz.jsonl",
+        "own_only": True,
+        "rescue": False,
+        "morphology": "morph_vz",
+        "credits": [
+            "Entrées rédigées par Claude (Anthropic) sur preuves, puis relues "
+            "par un second Claude — marquées « by: claude »",
+            "Wiktionary anglais (en.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "Tatoeba (tatoeba.org), phrases vietnamien–chinois — CC BY 2.0 FR",
+            "FrequencyWords, Hermit Dave, d'après OpenSubtitles — CC BY-SA 4.0",
         ],
     },
 }
@@ -238,6 +272,15 @@ def rescued(code):
     wiktextract ne reconnaît pas. Voir scripts/rescue.py.
     """
     return SOURCES / f"rescued-{code}.jsonl"
+
+
+def own_path(code):
+    """Les entrées écrites pour reindoo, qui passent devant le Wiktionnaire.
+
+    Việt–Pháp : data/reindoo-vi.jsonl. Trung–Việt et Việt–Trung : les
+    brouillons de Claude relus (data/han-zh.jsonl, data/han-vz.jsonl).
+    """
+    return lang(code).get("own") or ROOT / "data" / f"reindoo-{code}.jsonl"
 
 
 def lang(code):

@@ -168,7 +168,7 @@ def build_entry(headword, rows, freq, code, morph=None):
     derived, related, syn, ant = [], [], [], []
     keep_sense = getattr(morph, "keep_sense", None)
     label = getattr(morph, "label", None)
-    phonetic = code == "vi"
+    phonetic = code in ("vi", "vz")
 
     for row in rows:
         senses = build_senses(row, keep_sense, morph)
@@ -278,6 +278,33 @@ def apply_edits(entries, code):
     return n
 
 
+def add_own_stubs(entries, code, freq):
+    """Une page pour chaque entrée écrite que le Wiktionnaire n'a pas.
+
+    Việt–Trung n'est fait que de ses entrées (`own_only`). Un mot fréquent
+    que le Wiktionnaire anglais ne décrit pas — il en manque une poignée
+    dans le top 1 000 — reçoit une entrée vide : emit_mongo y met les sens
+    écrits, et la morphologie lui donne sa clé sans accents.
+    """
+    path = S.own_path(code)
+    if not path.exists():
+        return 0
+    have = {e["headword"] for e in entries.values()}
+    n = 0
+    for line in open(path, encoding="utf-8"):
+        if not line.strip():
+            continue
+        word = json.loads(line)["word"]
+        if word in have:
+            continue
+        entries[f"{code}:{word}"] = {
+            "id": f"{code}:{word}", "lang": code, "headword": word, "wiki": None,
+            "wikis": [], "rank": freq.get(word, 0.0), "ipa": [], "audio": None,
+            "blocks": [], "derived": [], "related": [], "synonyms": [], "antonyms": []}
+        n += 1
+    return n
+
+
 MEMO_KEYS = ("origin", "related", "tip")
 
 
@@ -370,6 +397,7 @@ def main():
             entries[entry["id"]] = entry
 
     n_edits = apply_edits(entries, code)
+    n_stubs = add_own_stubs(entries, code, freq) if cfg.get("own_only") else 0
     n_memos, memo_orphans = apply_memos(entries, code)
 
     # La morphologie, après la coupe : on n'engendre que ce qui mène à une page.
@@ -433,6 +461,8 @@ def main():
         print(f"  {n_edits} retouches appliquées")
     if n_memos:
         print(f"  {n_memos} notes pour retenir")
+    if n_stubs:
+        print(f"  {n_stubs} vedettes sans Wiktionnaire, gardées pour leur entrée écrite")
     if memo_orphans:
         print(f"  ⚠ notes sans vedette : {memo_orphans[:10]}")
     print(f"  → {out.relative_to(S.ROOT)}")
