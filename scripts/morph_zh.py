@@ -665,7 +665,11 @@ def merge(by_word, freq):
             m == main or simplifies_to(main, m)
             or (main in redirect_of.get(m, ()) and freq.get(m) > freq.get(main)))]
         if picks:
-            head = max(picks, key=lambda m: (freq.get(m), m == head, m))
+            best = max(picks, key=lambda m: (freq.get(m), m == head, m))
+            # « 𧹒 », simplification non standard de 買 qu'OpenCC admet,
+            # ne passe pas devant : il faut être plus fréquent.
+            if freq.get(best) > freq.get(head):
+                head = best
         rows, seen = [], set()
         for m in members:
             for row in by_word[m]:
@@ -746,7 +750,9 @@ def absorb(merged, absorbs, romanized, freq, compounds):
     def weight(chars):
         return sum(compounds[c] for c in chars if len(c) == 1)
 
-    for word in sorted(absorbs):
+    # Le plus fréquent d'abord : 买 prend 買, puis 𧹒, qui renvoie aussi à
+    # 買, n'en est plus qu'une graphie.
+    for word in sorted(absorbs, key=lambda w: (-freq.get(w), w)):
         hx = HEAD_OF.get(word)
         if hx is not None and hx != heads.get(word):
             continue                    # déjà fondu dans une autre entrée
