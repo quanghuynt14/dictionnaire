@@ -161,9 +161,12 @@ def main():
     # Une langue seule : on complète le verrou au lieu de le réécrire.
     if only:
         S.lang(only)
-        if only != "zh":
-            sys.exit("--lang ne sert aujourd'hui qu'à zh.")
-        fresh = fetch_zh(force, limit, words)
+        if only == "zh":
+            fresh = fetch_zh(force, limit, words)
+        else:
+            # Une autre langue : ses dumps kaikki, rien de plus (vz n'a que le
+            # Wiktionnaire anglais des mots vietnamiens).
+            fresh = {s["key"]: fetch_kaikki(s, force) for s in S.kaikki_sources(only)}
         if limit or words:
             what = f"{limit:,} lignes" if limit else f"{len(words):,} vedettes"
             print(f"\n  échantillon de {what} : sources.lock inchangé")
