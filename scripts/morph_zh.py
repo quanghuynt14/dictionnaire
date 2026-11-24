@@ -657,7 +657,18 @@ def extra(head, rows):
             if d.get("lang_code") == "vi" and w and not has_han(w) and \
                     w.lower() not in (r.lower() for r in readings):
                 readings.append(w)
-    out = {}
+    # Le Wiktionnaire vietnamien range parfois des mots vietnamiens parmi
+    # les dérivés d'un sinogramme (« văn minh » sous 明).
+    derived = []
+    for row in rows:
+        for d in row.get("derived") or []:
+            w = d.get("word") if isinstance(d, dict) else None
+            if w and has_han(w) and w not in derived:
+                derived.append(w)
+    # Le wiki donne chaque dérivé dans les deux écritures ; le simplifié suffit.
+    kept = set(derived)
+    derived = [w for w in derived if simplify(w) == w or simplify(w) not in kept]
+    out = {"derived": derived}
     if readings:
         out["hanviet"] = readings[:4]
     if group.get("traditional"):

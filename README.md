@@ -168,6 +168,46 @@ Les autres exemples sont écrits pour l'entrée. Aucun ne vient de QED : sa
 licence le réserve à la recherche. `drop_qed.py`, dans l'étude, les retire
 avant l'import.
 
+### Trung–Việt, pour le chinois
+
+Un quatrième, à l'essai aussi : des mots chinois (mandarin), expliqués en
+vietnamien. Il nourrit « Reindoo Hán ». Même méthode que Việt–Pháp :
+
+1. **le Wiktionnaire vietnamien**, sections « Tiếng Quan Thoại » et « Tiếng
+   Trung Quốc » — la langue du dictionnaire, 7 000 mots environ ;
+2. **le Wiktionnaire anglais**, section « Chinese », affiché tel quel et
+   marqué EN.
+
+```bash
+python3 scripts/fetch.py --lang zh             # les sources de zh seulement
+python3 scripts/fetch.py --lang zh --limit 30000   # un échantillon, pour un petit disque
+make mongo LANG=zh                              # → build/mongo-zh.ndjson
+```
+
+Le dump anglais pèse 1,2 Go. `fetch.py` le filtre pendant qu'il arrive
+(`morph_zh.slim`) : le mandarin seulement, et les champs qu'on lit. Il ne
+touche jamais le disque en entier. `fetch.py` sans `--lang` ne le télécharge
+pas ; la CI le construit en entier (`.github/workflows/zh.yml`).
+
+Ce que le pipeline fait propre à cette langue (`morph_zh.py`) :
+
+- **une entrée par mot**, sous la forme simplifiée : « 學 » et « 学 » sont une
+  page. Le lien vient du wiki (la page simplifiée renvoie à la traditionnelle) ;
+  OpenCC ne sert qu'à choisir laquelle afficher. L'autre graphie mène à la
+  page ;
+- **le pinyin** remplit `ipa`. On le cherche avec ou sans tons, collé ou en
+  syllabes, ou les tons en chiffres : « zhōngguó », « zhongguo », « zhong
+  guo », « zhong1guo2 » mènent à 中国 ;
+- **la lecture Hán Việt** (`hanviet`) : « học » pour 学, « Trung Quốc » pour
+  中国. Elle vient de la section vietnamienne du Wiktionnaire anglais. Un mot
+  sans lecture notée se compose caractère par caractère, si chacun n'en a
+  qu'une ;
+- **le mandarin seulement** : un sens marqué cantonais, hokkien, wu… est
+  écarté.
+
+Champs en plus dans `mongo-zh.ndjson`, ignorés par qui ne les lit pas :
+`hanviet`, `traditional`, `variants`, et `pinyin` sur chaque exemple.
+
 ## Reconstruire depuis les sources
 
 Rien de tout ça n'est nécessaire pour *se servir* du dictionnaire — seulement
@@ -236,6 +276,9 @@ viennent jamais du même endroit.
 |---|---|---|
 | fr | [Wiktionnaire vietnamien](https://vi.wiktionary.org), section « Tiếng Pháp », extrait par [kaikki.org](https://kaikki.org/viwiktionary/) | CC BY-SA 4.0 |
 | en | idem, section « Tiếng Anh » | CC BY-SA 4.0 |
+| zh | idem, sections « Tiếng Quan Thoại » et « Tiếng Trung Quốc » ; puis le [Wiktionary anglais](https://en.wiktionary.org), section « Chinese » (et « Vietnamese » pour les lectures Hán Việt) | CC BY-SA 4.0 |
+| zh | [FrequencyWords](https://github.com/hermitdave/FrequencyWords) (OpenSubtitles, zh_cn) pour le rang | CC BY-SA 4.0 |
+| zh | [OpenCC](https://github.com/BYVoid/OpenCC), table traditionnel → simplifié | Apache 2.0 |
 
 Des vedettes françaises et anglaises **glosées en vietnamien**, écrites par des
 humains, déjà en JSON. C'est tout l'intérêt de cette édition-là du Wiktionnaire.
