@@ -1,0 +1,41 @@
+# Trung–Việt en entier. Le dump anglais du chinois pèse 1,2 Go : trop pour le
+# VPS, où l'on ne travaille que sur un échantillon (`fetch.py --limit`).
+# Ici, il est filtré pendant qu'il arrive, puis le NDJSON est construit.
+name: zh
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [han]
+    paths:
+      - scripts/**
+      - .github/workflows/zh.yml
+
+jobs:
+  mongo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sources
+        run: python3 scripts/fetch.py --lang zh
+      - name: NDJSON
+        # LANG sur la ligne de commande : celui de l'environnement du runner
+        # (C.UTF-8) l'emporterait sur le `?=` du Makefile.
+        run: |
+          /usr/bin/time -v make mongo LANG=zh 2>&1 | grep -vE '^\s+(Page|Volun|Invol|Swap|File|Socket|Signal|Average|Exit|Minor|Major)'
+          ls -la build data/sources
+      - name: Résumé
+        run: |
+          {
+            echo '```'
+            python3 -c "import json; l=json.load(open('data/sources.lock')); print(json.dumps({k: v for k, v in l.items() if 'zh' in k or k == 'opencc-ts'}, indent=2))"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mongo-zh
+          path: |
+            build/mongo-zh.ndjson
+            data/sources.lock
+          compression-level: 9
