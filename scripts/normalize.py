@@ -43,7 +43,10 @@ def clean(text):
 # Ce que build_entry lit d'une ligne kaikki. Le reste — head_templates,
 # catégories, étymologie — pèse plus que les sens, et Việt–Pháp lit deux dumps.
 KEPT_FIELDS = ("word", "lang", "pos", "pos_title", "tags", "senses", "sounds",
-               "derived", "related", "synonyms", "antonyms")
+               "derived", "related", "synonyms", "antonyms",
+               # Trung–Việt : les liens entre graphies, et les lectures
+               # vietnamiennes d'un mot chinois.
+               "redirects", "forms", "descendants")
 
 
 def load_kaikki(sources, keep=None):
@@ -92,13 +95,29 @@ def wiki_url(headword, lang_name, host="vi.wiktionary.org"):
     return f"https://{host}/wiki/{page}#{anchor}"
 
 
-def build_senses(row, keep_sense=None):
+def build_senses(row, keep_sense=None, morph=None):
+    fix = getattr(morph, "gloss", None)
+    pick = getattr(morph, "examples", None)
     out = []
     for sense in row.get("senses", []):
         if keep_sense and not keep_sense(sense):
             continue
         glosses = [clean(g) for g in sense.get("glosses", []) if clean(g)]
+        if fix:
+            glosses = [g for g in map(fix, glosses) if g]
         if not glosses:
+            continue
+        # Le chinois choisit ses exemples lui-même : le wiki écrit chacun
+        # deux fois, en traditionnel et en simplifié, avec son pinyin.
+        if pick:
+            out.append({
+                "gloss": glosses[0],
+                "sub": glosses[1:],
+                "tags": [t for t in sense.get("tags", []) if t != "no-gloss"],
+                "examples": [{**ex, "src": clean(ex["src"]),
+                              "tr": clean(ex.get("tr")) or None}
+                             for ex in pick(sense) if clean(ex.get("src"))],
+            })
             continue
         examples = []
         for ex in sense.get("examples", []):
@@ -152,7 +171,7 @@ def build_entry(headword, rows, freq, code, morph=None):
     phonetic = code == "vi"
 
     for row in rows:
-        senses = build_senses(row, keep_sense)
+        senses = build_senses(row, keep_sense, morph)
         if not senses:
             continue
         src = row.get("_src") or {}
@@ -169,7 +188,7 @@ def build_entry(headword, rows, freq, code, morph=None):
             "tags": row.get("tags", []),
             "senses": senses,
         })
-        for sound in row.get("sounds", []):
+        for sound in [] if hasattr(morph, "sounds") else row.get("sounds", []):
             found = ipa_of(sound.get("ipa"))
             if found and (phonetic or found.startswith("/")):
                 ipa.append(found)
@@ -183,16 +202,23 @@ def build_entry(headword, rows, freq, code, morph=None):
     if not blocks:
         return None
 
+    # Le chinois lit le pinyin, pas l'API, et le prend aussi aux lignes de
+    # bính âm que merge a rattachées.
+    if hasattr(morph, "sounds"):
+        ipa, audio = morph.sounds(rows, headword)
+
     hosts = []
     for row in rows:
         src = row.get("_src") or {}
-        url = wiki_url(headword, src.get("section") or row.get("lang"),
+        # `_page` : la page d'où vient la ligne, quand une entrée réunit
+        # plusieurs graphies (學 et 学).
+        url = wiki_url(row.get("_page", headword), src.get("section") or row.get("lang"),
                        src.get("host", "vi.wiktionary.org"))
         if url and url not in hosts and any(
                 b for b in blocks if b["gloss_lang"] == src.get("gloss", "vi")):
             hosts.append(url)
 
-    return {
+    entry = {
         "id": f"{code}:{headword}",
         "lang": code,
         "headword": headword,
@@ -211,6 +237,11 @@ def build_entry(headword, rows, freq, code, morph=None):
         "synonyms": list(dict.fromkeys(syn)),
         "antonyms": list(dict.fromkeys(ant)),
     }
+    # Ce qu'une langue ajoute : pour le chinois, la lecture Hán Việt et
+    # l'autre écriture.
+    if hasattr(morph, "extra"):
+        entry.update(morph.extra(headword, rows))
+    return entry
 
 
 def apply_edits(entries, code):

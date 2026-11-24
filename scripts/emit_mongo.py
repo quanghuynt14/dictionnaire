@@ -32,8 +32,8 @@ import sources as S
 
 # Les langues, côté practice. Ses constantes sont des noms anglais en
 # minuscules — voir packages/shared/src/constants.ts.
-SOURCE_OF = {"fr": "french", "en": "english", "vi": "vietnamese"}
-TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french"}
+SOURCE_OF = {"fr": "french", "en": "english", "vi": "vietnamese", "zh": "chinese"}
+TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french", "zh": "vietnamese"}
 
 # Việt–Pháp mêle deux langues de glose : le français, et l'anglais là où le
 # Wiktionnaire français se tait ou date. Un sens anglais porte cette marque,
@@ -132,8 +132,11 @@ def explains_of(entry):
     first = True
     for block in entry.get("blocks", []):
         for sense in block.get("senses", []):
+            # `pinyin` : la lecture d'un exemple chinois. Une clé de plus,
+            # que les lecteurs qui ne la connaissent pas ignorent.
             examples = [
-                {"sourceSentence": ex["src"], "targetTranslation": ex["tr"]}
+                {"sourceSentence": ex["src"], "targetTranslation": ex["tr"],
+                 **({"pinyin": ex["roman"]} if ex.get("roman") else {})}
                 for ex in sense.get("examples", []) if ex.get("tr")
             ]
             explain = sense.get("gloss", "")
@@ -199,6 +202,10 @@ def main():
                 "edited": bool(entry.get("edited")),
                 # Ce qui aide à retenir le mot, quand quelqu'un l'a écrit.
                 **({"memo": entry["memo"]} if entry.get("memo") else {}),
+                # Trung–Việt : la lecture Hán Việt, la graphie traditionnelle
+                # et les autres graphies. `ipa` y porte le pinyin.
+                **{k: entry[k] for k in ("hanviet", "traditional", "variants")
+                   if entry.get(k)},
             }, ensure_ascii=False) + "\n")
 
         for form, targets in forms.items():
