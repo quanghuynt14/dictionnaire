@@ -541,8 +541,14 @@ def merge(by_word, freq):
 
     ambiguous = {}
     for word, rows in by_word.items():
+        # Une page qui a ses propres sens n'est pas une simple graphie : si
+        # l'une de ses étymologies renvoie ailleurs (« 發 » -> 暴), elle ne se
+        # fond pas pour autant dans la cible.
+        stub = not has_body(rows)
         for row in rows:
             targets = [t for t in row.get("redirects") or [] if t != word and t in by_word]
+            if not stub:
+                targets = []
             # « 学 » renvoie à 學 et à 孛 : seul le premier se simplifie en
             # 学. C'est lui, la graphie traditionnelle.
             if len(targets) > 1:

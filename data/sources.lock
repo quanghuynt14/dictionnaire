@@ -44,5 +44,33 @@
   "frequence-vi": {
     "url": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/vi/vi_full.txt",
     "sha256": "b9063a8ec6a40fb22db9a2f8f5f90a06784669f235a95b25d5f28ae093ebaf07"
+  },
+  "kaikki-zh-cmn": {
+    "url": "https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Quan%20Tho%E1%BA%A1i/kaikki.org-dictionary-Ti%E1%BA%BFngQuanTho%E1%BA%A1i.jsonl",
+    "sha256": "ceed688f1215d69a1e0712ed4ac301dd268088d3797c996afeff19eadc987720",
+    "bytes": 5569540,
+    "lines": 3896
+  },
+  "kaikki-zh-vi": {
+    "url": "https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Trung%20Qu%E1%BB%91c/kaikki.org-dictionary-Ti%E1%BA%BFngTrungQu%E1%BB%91c.jsonl",
+    "sha256": "0e090198f75b51fc5deb2e7a7f3dd77b5af6bc90bd7a003aedcf018bdc549246",
+    "bytes": 16042055,
+    "lines": 4171
+  },
+  "kaikki-zh-en": {
+    "url": "https://kaikki.org/dictionary/Chinese/kaikki.org-dictionary-Chinese.jsonl",
+    "sha256": "abb01fd0088353df84d8696af049b94b99acfc28ad2d640c72267afc5463947c",
+    "bytes": 1214692243,
+    "lines": 328919,
+    "kept": 285841,
+    "kept_sha256": "37946be00533f773f0567f36431a6eb7e7e392e487f3c4b584cbb1a05649f4a2"
+  },
+  "frequence-zh": {
+    "url": "https://raw.githubusercontent.com/hermitdave/FrequencyWords/master/content/2018/zh_cn/zh_cn_full.txt",
+    "sha256": "0a34556e278008539273e07bda10baca9e2b9637cff2ff3ca9cd93782571abbd"
+  },
+  "opencc-ts": {
+    "url": "https://raw.githubusercontent.com/BYVoid/OpenCC/fae2a0a911c30764e669a7d8b0591cd8e852934a/data/dictionary/TSCharacters.txt",
+    "sha256": "9ff46a7d30e5765375eb13d33f2b03a34d298913caf2b120380679f33ae1642d"
   }
 }
