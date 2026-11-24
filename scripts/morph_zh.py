@@ -56,6 +56,22 @@ def ts_table():
     return _TS
 
 
+def _options(ch):
+    return ts_table().get(ch, [ch])
+
+
+def also_simplified(word):
+    """Une graphie qui s'écrit aussi en simplifié : 著 (zhù), 乾 (qián), 了.
+    « 聽 » ou « 後 » n'en sont pas : le simplifié écrit 听, 后."""
+    return all(c in _options(c) for c in word)
+
+
+def simplifies_to(trad, simp):
+    """OpenCC admet-il `simp` comme forme simplifiée de `trad` ?"""
+    return (trad != simp and len(trad) == len(simp)
+            and all(s in _options(t) for t, s in zip(trad, simp)))
+
+
 def simplify(word, strict=False):
     """La graphie simplifiée, ou None si `strict` et qu'un caractère hésite."""
     table = ts_table()
@@ -106,8 +122,11 @@ VAGUE_TITLES = {"Định nghĩa", "Latinh hóa"}
 
 
 def dialectal(tags):
+    """Un sens propre à un autre parler. « Taiwanese-Mandarin » est du
+    mandarin : kaikki le colle, avec « Jin », à tous les sens de 著, et les
+    perdre ôtait à 著 (et à 着) zhe et zhù."""
     tags = set(tags or [])
-    return bool(tags & TOPOLECTS) and "Mandarin" not in tags
+    return bool(tags & TOPOLECTS) and not any(t.endswith("Mandarin") for t in tags)
 
 
 REFERENCE = re.compile(
@@ -146,8 +165,18 @@ def label(row):
     src = row.get("_src") or {}
     title = (row.get("pos_title") or "").rstrip("0123456789 ")
     if src.get("gloss") == "vi" and title and title not in VAGUE_TITLES:
-        return title
-    return LABELS.get(row.get("pos"))
+        base = title
+    else:
+        base = LABELS.get(row.get("pos"))
+    # Une vedette simplifiée qui réunit plusieurs pages (voir absorb) : on
+    # dit de quelle graphie traditionnelle vient chaque sens, et lesquels
+    # sont ceux du caractère simplifié lui-même.
+    if row.get("_trad"):
+        return f"{base} – {row['_trad']}" if base else row["_trad"]
+    if row.get("_own"):
+        mark = f"nghĩa riêng của {row['_own']}"
+        return f"{base} – {mark}" if base else mark
+    return base
 
 
 # Les classificateurs du Wiktionnaire anglais disent pour quel parler ils
@@ -243,6 +272,10 @@ def slim(row):
     if not senses:
         return None
     out = {"word": word, "pos": row.get("pos"), "senses": senses, "sounds": sounds}
+    # « 并 » a ses propres sens (bīng) *et* renvoie à 並, 併 : le renvoi
+    # tient sur la même ligne, et merge en a besoin.
+    if row.get("redirects"):
+        out["redirects"] = row["redirects"]
     forms = [f for f in row.get("forms") or []
              if set(f.get("tags") or []) & {"Simplified-Chinese", "Traditional-Chinese"}
              and "alternative" not in (f.get("tags") or [])]
@@ -508,8 +541,8 @@ def merge(by_word, freq):
     """Les graphies d'un même mot -> une entrée, sous la simplifiée.
 
     Trois liens, tous écrits par le wiki : la page simplifiée qui renvoie à
-    la traditionnelle (une seule cible : « 发 » renvoie à 發 *et* à 髮, deux
-    mots, et reste une page de formes) ; la forme marquée Simplified-Chinese
+    la traditionnelle (voir absorb : « 发 » renvoie à 發 *et* à 髮, et
+    réunit les deux, chacun groupé) ; la forme marquée Simplified-Chinese
     d'une page ; et, pour les mots de deux caractères ou plus, la conversion
     OpenCC quand elle est sans ambiguïté et que les deux pages existent.
     """
@@ -539,31 +572,60 @@ def merge(by_word, freq):
         if a in parent and b in parent:
             parent[find(a)] = find(b)
 
-    ambiguous = {}
+    # Les caractères traditionnels qu'OpenCC simplifie d'une seule façon :
+    # « 達 » -> 达. Ils complètent les renvois que kaikki a perdus.
+    only_simple = collections.defaultdict(list)
+    for trad, options in ts_table().items():
+        if len(options) == 1 and options[0] != trad:
+            only_simple[options[0]].append(trad)
+
+    ambiguous, absorbs, redirect_of = {}, {}, {}
     for word, rows in by_word.items():
-        # Une page qui a ses propres sens n'est pas une simple graphie : si
-        # l'une de ses étymologies renvoie ailleurs (« 發 » -> 暴), elle ne se
-        # fond pas pour autant dans la cible.
         stub = not has_body(rows)
+        targets = []
         for row in rows:
-            targets = [t for t in row.get("redirects") or [] if t != word and t in by_word]
-            if not stub:
-                targets = []
-            # « 学 » renvoie à 學 et à 孛 : seul le premier se simplifie en
-            # 学. C'est lui, la graphie traditionnelle.
-            if len(targets) > 1:
-                simple = [t for t in targets if simplify(t) == word]
-                if len(simple) == 1:
-                    union(word, simple[0])
-                    ambiguous[word] = [t for t in targets if t != simple[0]]
-                    continue
+            for t in row.get("redirects") or []:
+                if t != word and t in by_word and t not in targets:
+                    targets.append(t)
+            for f in row.get("forms") or []:
+                if set(f.get("tags") or []) & {"Simplified-Chinese", "Traditional-Chinese"}:
+                    union(f["form"], word)
+        redirect_of[word] = targets
+        if also_simplified(word):
+            # Une graphie simplifiée qui renvoie à sa traditionnelle : « 听 »
+            # -> 聽, « 发 » -> 發 et 髮. Elle prend leurs sens (absorb), même
+            # quand elle a les siens : 听 est aussi un caractère rare (yǐn,
+            # « sourire »), mais celui qu'on lit est 聽. « 学 » renvoie à 學
+            # et à 孛 : seul le premier se simplifie en 学.
+            confirmed = [t for t in targets if simplifies_to(t, word)]
+            if not confirmed and stub and len(targets) == 1:
+                # « 着 » -> 著, qu'OpenCC garde tel quel : 着 est le plus
+                # courant, c'est lui qu'on écrit. « 㐀 » -> 丘 n'est qu'une
+                # graphie rare de 丘 : une seule entrée, sous 丘.
+                if freq.get(word) > freq.get(targets[0]):
+                    confirmed = targets
+                else:
+                    union(word, targets[0])
+            if len(word) == 1:
+                # kaikki perd des renvois : « 达 » ne dit plus 達, « 台 » ne
+                # garde que 檯 (pas 臺 ni 颱), « 几 » oublie 幾. OpenCC les
+                # rend, quand il ne simplifie le traditionnel qu'en ce
+                # caractère et que le traditionnel ne s'écrit pas aussi tel
+                # quel en simplifié.
+                confirmed += [t for t in only_simple.get(word, [])
+                              if t in by_word and t not in confirmed
+                              and has_body(by_word[t]) and not also_simplified(t)]
+            if confirmed:
+                absorbs[word] = confirmed
+            rest = [t for t in targets if t not in confirmed]
+            if rest and stub:
+                ambiguous[word] = rest
+        elif stub:
+            # Une variante traditionnelle (« 竝 » -> 並) : une seule entrée.
             if len(targets) == 1:
                 union(word, targets[0])
             elif len(targets) > 1:
                 ambiguous[word] = targets
-            for f in row.get("forms") or []:
-                if set(f.get("tags") or []) & {"Simplified-Chinese", "Traditional-Chinese"}:
-                    union(f["form"], word)
         if len(word) >= 2:
             simple = simplify(word, strict=True)
             if simple and simple != word:
@@ -582,6 +644,17 @@ def merge(by_word, freq):
         # simplifiée, si le groupe la contient, devient la vedette.
         main = max(bodies, key=lambda w: (len(by_word[w]), freq.get(w), w))
         head = simplify(main) if simplify(main) in members else main
+        # OpenCC ne simplifie pas 藉口 en 借口 (藉 a deux sorties), ni 睡著
+        # en 睡着 (il garde 著). La vedette : la plus fréquente des graphies
+        # simplifiées du groupe, celles qu'OpenCC admet ou qui renvoient à
+        # la page principale. Un renvoi seul ne suffit pas : « 囯 » renvoie
+        # aussi à 國, mais personne ne l'écrit ; il doit être plus fréquent
+        # que la page.
+        picks = [m for m in members if also_simplified(m) and (
+            m == main or simplifies_to(main, m)
+            or (main in redirect_of.get(m, ()) and freq.get(m) > freq.get(main)))]
+        if picks:
+            head = max(picks, key=lambda m: (freq.get(m), m == head, m))
         rows, seen = [], set()
         for m in members:
             for row in by_word[m]:
@@ -595,7 +668,9 @@ def merge(by_word, freq):
                 rows.append(dict(row, _page=m))
         rows.sort(key=lambda r: GLOSS_ORDER.get((r.get("_src") or {}).get("gloss"), 2))
         others = sorted((m for m in members if m != head), key=lambda m: (m != simplify(m), m))
-        traditional = next((m for m in others if simplify(m) == head), None)
+        traditional = next((m for m in others if simplify(m) == head
+                            or simplifies_to(m, head) or m in redirect_of.get(head, ())),
+                           None)
         merged[head] = rows
         GROUPS[head] = {
             "variants": others,
@@ -606,6 +681,17 @@ def merge(by_word, freq):
             HEAD_OF[m] = head
         if any((r.get("_src") or {}).get("gloss") == "vi" for r in rows):
             freq.boost[head] = 0.5
+
+    # Combien de mots s'écrivent avec chaque caractère : 聽 (聽說, 聽見…) en
+    # a bien plus que 听 seul. absorb y lit lequel est le plus courant. On
+    # ne compte que les pages anglaises qui ont des sens : le Wiktionnaire
+    # anglais les met sous la graphie traditionnelle (听说 n'est qu'un
+    # renvoi vers 聽說).
+    compounds = collections.Counter(
+        c for w, rows in by_word.items() if len(w) > 1
+        and any((r.get("_src") or {}).get("gloss") == "en" and has_body([r]) for r in rows)
+        for c in set(w))
+    absorb(merged, absorbs, romanized, freq, compounds)
 
     # Les renvois : un mot dont un sens n'est que « alternative form of X »,
     # et les pages simplifiées à plusieurs cibles.
@@ -618,6 +704,109 @@ def merge(by_word, freq):
         for t in targets:
             REFERENCES.append((word, t, "giản thể"))
     return merged
+
+
+def absorb(merged, absorbs, romanized, freq, compounds):
+    """Une vedette simplifiée prend les sens de ses graphies traditionnelles.
+
+    « 听 » est la forme simplifiée de 聽 (tīng, écouter), mais aussi un
+    caractère à part (yǐn, sourire), avec sa propre page. Fondre les deux
+    pages n'était permis qu'à une page sans sens ; 听 en a, et l'entrée
+    n'affichait que yǐn, tandis que 聽 restait seul sous sa graphie
+    traditionnelle. Ici, l'entrée 听 donne les sens et le pinyin de 聽, puis
+    ceux de 听 seul, marqués comme tels. Plusieurs traditionnels (发 : 發,
+    髮) se suivent, chacun groupé sous son caractère.
+
+    L'ordre des groupes : le caractère qui entre dans le plus de mots
+    d'abord. 聽 (聽說, 聽見…) passe devant 听 ; mais 只 (只是, 只有…) reste
+    devant 隻, et 表 (表示, 代表…) devant 錶 : leurs sens à eux sont les
+    courants.
+
+    La page traditionnelle disparaît dans la simplifiée, sauf un caractère
+    qu'on écrit aussi en simplifié : 著 (zhù) garde son entrée, et 着
+    reprend ses sens. Un mot comme 睡著 n'est que l'autre graphie de 睡着.
+    """
+    heads = dict(HEAD_OF)
+    members = collections.defaultdict(list)
+    for m, h in heads.items():
+        members[h].append(m)
+    before = {h: list(rows) for h, rows in merged.items()}
+
+    def weight(chars):
+        return sum(compounds[c] for c in chars if len(c) == 1)
+
+    for word in sorted(absorbs):
+        hx = HEAD_OF.get(word)
+        if hx is not None and hx != heads.get(word):
+            continue                    # déjà fondu dans une autre entrée
+        fresh = hx is None              # une page sans sens à elle : « 发 »
+        if fresh:
+            hx = word
+        taken, seen = [], {hx}
+        for t in absorbs[word]:
+            ht = heads.get(t)
+            if ht is None or ht in seen or HEAD_OF.get(t) == hx:
+                continue
+            seen.add(ht)
+            taken.append((t, ht))
+        if not taken:
+            continue
+        if fresh:
+            HEAD_OF[word] = word
+            GROUPS[word] = {"variants": [], "traditional": None,
+                            "romanized": list(romanized.get(word, []))}
+        # Le Wiktionnaire vietnamien décrit le caractère simplifié dans son
+        # usage d'aujourd'hui (复 : lặp lại, khôi phục) : il reste en tête.
+        # Les sens anglais de la page simplifiée sont ceux du caractère seul.
+        own = merged.get(hx, [])
+        own_vi = [r for r in own if (r.get("_src") or {}).get("gloss") == "vi"]
+        own_en = [r for r in own if r not in own_vi]
+        # (poids, rang, caractère, lignes). À poids égal : le traditionnel
+        # pur, puis le caractère seul, puis celui qui s'écrit aussi en
+        # simplifié (借 avant 藉, 干 avant 乾).
+        parts = [(weight(members[ht]), 2 if also_simplified(t) else 0, t,
+                  before.get(ht, [])) for t, ht in taken]
+        if own_en:
+            parts.append((weight([word]), 1, None, own_en))
+        parts.sort(key=lambda p: (-p[0], p[1], -sum(len(r.get("senses") or [])
+                                                    for r in p[3])))
+        mark = len(parts) > 1
+        rows, sigs = [], set()
+        for _, _, t, part in [(0, 0, None, own_vi)] + parts:
+            for r in part:
+                sig = ((r.get("_src") or {}).get("gloss"), r.get("pos"),
+                       tuple(g for s in r.get("senses") or [] for g in s.get("glosses") or []))
+                if sig in sigs:
+                    continue
+                sigs.add(sig)
+                if mark and part is not own_vi:
+                    r = dict(r, _trad=t) if t else dict(r, _own=hx)
+                rows.append(r)
+        merged[hx] = rows
+        # La graphie traditionnelle : celle du premier groupe traditionnel.
+        taken = [(p[2], heads[p[2]]) for p in parts if p[2]]
+
+        group = GROUPS[hx]
+        group["traditional"] = taken[0][0]
+        group["traditionals"] = [t for t, _ in taken]
+        for t, ht in taken:
+            other = GROUPS.get(ht, {})
+            moved = [ht] + other.get("variants", [])
+            if len(ht) == 1 and also_simplified(ht):
+                moved = [t]                 # 著 garde son entrée ; 睡著 non
+            else:
+                merged.pop(ht, None)
+                GROUPS.pop(ht, None)
+                for m in members[ht]:
+                    HEAD_OF[m] = hx
+            for m in moved:
+                if m != hx and m not in group["variants"]:
+                    group["variants"].append(m)
+            for p in other.get("romanized", []):
+                if p not in group["romanized"]:
+                    group["romanized"].append(p)
+        if any((r.get("_src") or {}).get("gloss") == "vi" for r in rows):
+            freq.boost[hx] = 0.5
 
 
 # --- ce que l'entrée porte en plus ----------------------------------------------
@@ -699,7 +888,8 @@ def build(entries_by_head):
     for head, rows in entries_by_head.items():
         group = GROUPS.get(head, {})
         for v in group.get("variants", []):
-            label_ = "phồn thể" if v == group.get("traditional") else "dị thể"
+            trads = group.get("traditionals") or [group.get("traditional")]
+            label_ = "phồn thể" if v in trads else "dị thể"
             by_form[v].setdefault(head, label_)
             n_script += 1
         count = sum(1 for c in head if is_han(c)) or len(head)
