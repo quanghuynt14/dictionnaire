@@ -24,6 +24,7 @@ jobs:
         # LANG sur la ligne de commande : celui de l'environnement du runner
         # (C.UTF-8) l'emporterait sur le `?=` du Makefile.
         run: |
+          set -euo pipefail
           /usr/bin/time -v make mongo LANG=zh 2>&1 | grep -vE '^\s+(Page|Volun|Invol|Swap|File|Socket|Signal|Average|Exit|Minor|Major)'
           ls -la build data/sources
       - name: Résumé
