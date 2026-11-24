@@ -249,6 +249,20 @@ def main():
     forms = json.load(open(S.BUILD / f"forms-{code}.json", encoding="utf-8"))
     heads = {e["headword"] for e in lexicon}
     own = own_entries(code)
+    # Une entrée écrite sous une graphie traditionnelle qui n'est plus
+    # vedette (聽, fondu dans 听) va à sa vedette simplifiée. Si celle-ci a
+    # déjà la sienne, elle fait double emploi : on la laisse de côté.
+    for word in sorted(set(own) - heads):
+        lemmas = [t["lemma"] for t in forms.get(word, [])
+                  if t["lemma"] in heads and t.get("analysis") == "phồn thể"]
+        if not lemmas:
+            continue
+        if lemmas[0] in own:
+            print(f"  {word} : doublon de l'entrée {lemmas[0]}, laissé de côté")
+            del own[word]
+        else:
+            print(f"  {word} : entrée rattachée à {lemmas[0]}")
+            own[lemmas[0]] = own.pop(word)
     missing = sorted(set(own) - heads)
     if missing:
         raise SystemExit(f"entrées reindoo sans vedette : {missing[:10]}")

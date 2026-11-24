@@ -598,6 +598,17 @@ def merge(by_word, freq):
             # « sourire »), mais celui qu'on lit est 聽. « 学 » renvoie à 學
             # et à 孛 : seul le premier se simplifie en 学.
             confirmed = [t for t in targets if simplifies_to(t, word)]
+            if stub:
+                # « 好象 » -> 好像 : OpenCC admet 像 -> 象, mais 好像 s'écrit
+                # aussi en simplifié, et plus souvent. 好象 n'en est qu'une
+                # graphie. Une cible qui s'écrit aussi en simplifié ne se
+                # laisse prendre que par plus fréquent qu'elle.
+                weak = [t for t in confirmed
+                        if also_simplified(t) and not freq.get(word) > freq.get(t)]
+                confirmed = [t for t in confirmed if t not in weak]
+                if weak and not confirmed:
+                    union(word, weak[0])
+                    targets = [t for t in targets if t not in weak]
             if not confirmed and stub and len(targets) == 1:
                 # « 着 » -> 著, qu'OpenCC garde tel quel : 着 est le plus
                 # courant, c'est lui qu'on écrit. « 㐀 » -> 丘 n'est qu'une
@@ -744,12 +755,21 @@ def absorb(merged, absorbs, romanized, freq, compounds):
             hx = word
         taken, seen = [], {hx}
         for t in absorbs[word]:
-            ht = heads.get(t)
-            if ht is None or ht in seen or HEAD_OF.get(t) == hx:
+            ht = HEAD_OF.get(t)
+            if ht is None or ht in seen:
+                continue
+            if ht != t and also_simplified(ht):
+                # 甚么 -> 甚麼, que merge a déjà rangé sous 什么 : 甚么 n'en
+                # est qu'une graphie de plus.
+                if fresh and not taken:
+                    HEAD_OF[word] = ht
+                    if word not in GROUPS[ht]["variants"]:
+                        GROUPS[ht]["variants"].append(word)
+                    break
                 continue
             seen.add(ht)
             taken.append((t, ht))
-        if not taken:
+        if not taken or HEAD_OF.get(word) not in (None, hx):
             continue
         if fresh:
             HEAD_OF[word] = word
@@ -784,7 +804,7 @@ def absorb(merged, absorbs, romanized, freq, compounds):
                 rows.append(r)
         merged[hx] = rows
         # La graphie traditionnelle : celle du premier groupe traditionnel.
-        taken = [(p[2], heads[p[2]]) for p in parts if p[2]]
+        taken = [(p[2], dict(taken)[p[2]]) for p in parts if p[2]]
 
         group = GROUPS[hx]
         group["traditional"] = taken[0][0]
