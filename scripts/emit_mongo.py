@@ -179,6 +179,21 @@ def main():
     forms = json.load(open(S.BUILD / f"forms-{code}.json", encoding="utf-8"))
     heads = {e["headword"] for e in lexicon}
     own = own_entries(code)
+    # Une entrée écrite sous l'orthographe que la fusion n'a pas gardée
+    # (« công ti », fondu dans « công ty » ; « hoà » dans « hòa ») va à la
+    # vedette gardée. Si celle-ci a déjà la sienne, c'est le même mot écrit
+    # deux fois : on garde celle de la vedette.
+    RESPELLED = {"viết i/y", "dấu đặt chỗ khác"}
+    for word in sorted(set(own) - heads):
+        lemmas = [t["lemma"] for t in forms.get(word, [])
+                  if t["lemma"] in heads and t.get("analysis") in RESPELLED]
+        if not lemmas:
+            continue
+        if lemmas[0] in own:
+            print(f"  {word} : doublon de l'entrée {lemmas[0]}, laissé de côté")
+            del own[word]
+        else:
+            own[lemmas[0]] = own.pop(word)
     missing = sorted(set(own) - heads)
     if missing:
         raise SystemExit(f"entrées reindoo sans vedette : {missing[:10]}")
