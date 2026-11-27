@@ -317,6 +317,16 @@ def main():
             n_rescued += 1
         print(f"    {n_rescued:,} blocs rattrapés sur le wikitexte")
 
+    # La troisième langue complète une vedette, elle n'en crée pas : un mot
+    # que seul le Wiktionnaire anglais connaît n'a rien à faire dans
+    # Pháp–Việt. Voir foreign.py.
+    if any(src.get("attach") for src in S.kaikki_sources(code)):
+        before = len(by_word)
+        by_word = collections.defaultdict(list, {
+            w: rows for w, rows in by_word.items()
+            if any(not (r.get("_src") or {}).get("attach") for r in rows)})
+        print(f"    {before - len(by_word):,} vedettes de la troisième langue seule, écartées")
+
     freq = morph.frequency()
     print(f"    {len(freq):,} lemmes classés par fréquence")
 

@@ -114,10 +114,11 @@ def blocks_html(entry, indent="    "):
     p = []
     for block in entry["blocks"]:
         label = block.get("pos_vi") or block.get("pos") or ""
-        # Dans Việt–Pháp, un bloc en anglais le dit, pour qu'on ne lise pas
-        # ses gloses comme du français.
-        if block.get("gloss_lang") == "en":
-            label = f"{label} · EN" if label else "EN"
+        # Un bloc qui n'est pas dans la langue du dictionnaire le dit : un
+        # bloc anglais dans Việt–Pháp ou Pháp–Việt, français dans Anh–Việt.
+        mark = {"en": "EN", "fr": "FR"}.get(block.get("gloss_lang"))
+        if mark and block.get("gloss_lang") != {"vi": "fr"}.get(entry.get("lang")):
+            label = f"{label} · {mark}" if label else mark
         p.append(f'{indent}<div class="block">')
         if label:
             # Un sens pronominal ne s'emploie pas sous la vedette nue : on dit

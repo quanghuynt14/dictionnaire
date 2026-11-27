@@ -39,6 +39,9 @@ TARGET_OF = {"fr": "vietnamese", "en": "vietnamese", "vi": "french"}
 # Wiktionnaire français se tait ou date. Un sens anglais porte cette marque,
 # pour qu'on ne le prenne pas pour du français.
 FOREIGN_MARK = {"en": "EN"}
+# Pháp–Việt et Anh–Việt portent aussi leur troisième langue (foreign.py) :
+# l'anglais d'un mot français, le français d'un mot anglais.
+FOREIGN_MARK_OF = {"fr": {"en": "EN"}, "en": {"fr": "FR"}}
 
 
 def own_entries(code):
@@ -117,7 +120,7 @@ def translated_of(entry, code):
     return " / ".join(out[:3])
 
 
-def explains_of(entry):
+def explains_of(entry, code=None):
     """Les sens, dans la forme `explains` que practice lit déjà.
 
     Les synonymes et les antonymes sont portés par l'entrée chez nous, pas par
@@ -137,7 +140,7 @@ def explains_of(entry):
                 for ex in sense.get("examples", []) if ex.get("tr")
             ]
             explain = sense.get("gloss", "")
-            mark = FOREIGN_MARK.get(block.get("gloss_lang"))
+            mark = FOREIGN_MARK_OF.get(code, FOREIGN_MARK).get(block.get("gloss_lang"))
             if mark:
                 explain = f"[{mark}] {explain}"
             # La catégorie grammaticale devant le sens : « Danh từ » contre
@@ -175,7 +178,7 @@ def main():
     n_words = n_forms = 0
     with open(out, "w", encoding="utf-8") as f:
         for entry in lexicon:
-            explains = explains_of(entry)
+            explains = explains_of(entry, code)
             mine = own.get(entry["headword"])
             if mine:
                 explains = own_explains(mine) + explains

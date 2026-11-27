@@ -37,9 +37,19 @@ LANGS = {
         "kaikki_url": ("https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Ph%C3%A1p/"
                        "kaikki.org-dictionary-Ti%E1%BA%BFngPh%C3%A1p.jsonl"),
         "kaikki": SOURCES / "kaikki-fr.jsonl",
+        # La troisième langue : les sens anglais d'un mot français. Voir
+        # scripts/foreign.py.
+        "third": {"key": "kaikki-fr-en", "gloss": "en", "attach": True,
+                  "host": "en.wiktionary.org", "section": "French",
+                  "url": ("https://kaikki.org/dictionary/French/"
+                          "kaikki.org-dictionary-French.jsonl"),
+                  "path": SOURCES / "kaikki-fr-en.jsonl",
+                  "slim": "foreign"},
         "morphology": "morph_fr",
         "credits": [
             "Wiktionnaire vietnamien (vi.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "Wiktionary anglais (en.wiktionary.org), extrait par "
             "wiktextract / kaikki.org — CC BY-SA 4.0",
             "Verbiste, Pierre Sarrazin (sarrazip.com), via verbecc de "
             "Brett Tolbert — GPL v2",
@@ -54,9 +64,18 @@ LANGS = {
         "kaikki_url": ("https://kaikki.org/viwiktionary/Ti%E1%BA%BFng%20Anh/"
                        "kaikki.org-dictionary-Ti%E1%BA%BFngAnh.jsonl"),
         "kaikki": SOURCES / "kaikki-en.jsonl",
+        # La troisième langue : les sens français d'un mot anglais.
+        "third": {"key": "kaikki-en-fr", "gloss": "fr", "attach": True,
+                  "host": "fr.wiktionary.org", "section": "Anglais",
+                  "url": ("https://kaikki.org/frwiktionary/Anglais/"
+                          "kaikki.org-dictionary-Anglais.jsonl"),
+                  "path": SOURCES / "kaikki-en-fr.jsonl",
+                  "slim": "foreign"},
         "morphology": "morph_en",
         "credits": [
             "Wiktionnaire vietnamien (vi.wiktionary.org), extrait par "
+            "wiktextract / kaikki.org — CC BY-SA 4.0",
+            "Wiktionnaire français (fr.wiktionary.org), extrait par "
             "wiktextract / kaikki.org — CC BY-SA 4.0",
             "WordNet 3.0, Princeton University — licence WordNet",
             "SUBTLEX-US, Brysbaert & New — usage libre pour la recherche",
@@ -140,17 +159,18 @@ FREQ_VI_URL = ("https://raw.githubusercontent.com/hermitdave/FrequencyWords/"
 def kaikki_sources(code):
     """Les dumps kaikki d'une langue, dans l'ordre où leurs sens s'affichent.
 
-    Pháp–Việt et Anh–Việt en ont un, tiré du Wiktionnaire vietnamien.
-    Việt–Pháp en a deux. La forme est la même pour tous, et le pipeline ne
+    Pháp–Việt et Anh–Việt en ont deux : le Wiktionnaire vietnamien, puis
+    leur troisième langue (`third`, voir foreign.py). Việt–Pháp en a deux. La forme est la même pour tous, et le pipeline ne
     connaît qu'elle.
     """
     cfg = lang(code)
     if "kaikki_sources" in cfg:
         return cfg["kaikki_sources"]
     section = "Tiếng Pháp" if code == "fr" else "Tiếng Anh"
-    return [{"key": f"kaikki-{code}", "gloss": "vi",
-             "host": "vi.wiktionary.org", "section": section,
-             "url": cfg["kaikki_url"], "path": cfg["kaikki"]}]
+    base = {"key": f"kaikki-{code}", "gloss": "vi",
+            "host": "vi.wiktionary.org", "section": section,
+            "url": cfg["kaikki_url"], "path": cfg["kaikki"]}
+    return [base] + ([cfg["third"]] if "third" in cfg else [])
 
 
 def rescued(code):

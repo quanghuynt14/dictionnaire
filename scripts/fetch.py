@@ -7,9 +7,19 @@ artefact compilé : quand une entrée a l'air fausse, la première question est
 supposition. Avec, c'est une ligne de fichier.
 
 Usage :  python3 scripts/fetch.py [--force]
+         python3 scripts/fetch.py --lang zh [--limit N | --words FICHIER]
+
+Sans --lang, toutes les langues sauf les optionnelles (Trung–Việt). Avec,
+cette langue seule, et le verrou garde ce qu'il savait des autres.
+`--limit N` s'arrête après N lignes d'un dump filtré : un échantillon pour
+travailler sur une petite machine. Il n'écrit pas le verrou.
+`--words FICHIER` lit tout le dump mais n'en garde que les vedettes listées
+(une par ligne) : de quoi bâtir en local les entrées qu'on vient d'écrire,
+sans les 140 000 autres. Il n'écrit pas le verrou non plus.
 """
 
 import hashlib
+import importlib
 import io
 import json
 import shutil
@@ -36,6 +46,73 @@ def download(url, dest, force):
     print(f"  ↓ {dest.name}")
     with urllib.request.urlopen(url) as r, open(dest, "wb") as f:
         shutil.copyfileobj(r, f)
+
+
+def download_slim(src, force, limit=None, words=None):
+    """Un dump trop gros pour le disque : filtré ligne à ligne en arrivant.
+
+    Le fichier anglais du chinois pèse 1,2 Go, dont l'essentiel est du
+    cantonais, du hokkien et des prononciations de dix dialectes. On ne
+    l'écrit jamais en entier : `slim` (dans le module de morphologie, où
+    vivent les décisions de contenu) rend la ligne allégée, ou None.
+
+    L'empreinte notée est celle du dump **brut** : c'est elle qui dit de
+    quel export kaikki vient le fichier.
+    """
+    dest = src["path"]
+    if dest.exists() and not force and limit is None and words is None:
+        print(f"  = {dest.name} déjà là")
+        return None
+    slim = importlib.import_module(src["slim"]).slim
+    print(f"  ↓ {dest.name} (filtré)")
+    h, size, raw, kept = hashlib.sha256(), 0, 0, 0
+    tmp = dest.with_suffix(".part")
+    with urllib.request.urlopen(src["url"]) as r, open(tmp, "w", encoding="utf-8") as f:
+        for line in r:
+            h.update(line)
+            size += len(line)
+            raw += 1
+            row = slim(json.loads(line)) if line.strip() else None
+            if row and (words is None or row["word"] in words):
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+                kept += 1
+            if limit and raw >= limit:
+                break
+    tmp.replace(dest)
+    print(f"    {raw:,} lignes lues, {kept:,} gardées")
+    return {"url": src["url"], "sha256": h.hexdigest(), "bytes": size,
+            "lines": raw, "kept": kept, "kept_sha256": digest(dest)}
+
+
+def fetch_kaikki(src, force, limit=None, words=None):
+    """Un dump kaikki, et ce que le verrou en dit."""
+    if src.get("slim"):
+        entry = download_slim(src, force, limit, words)
+        if entry is None:
+            # Déjà là : on garde ce que le verrou savait du dump brut.
+            entry = json.loads(S.LOCK.read_text()).get(src["key"]) if S.LOCK.exists() else None
+        return entry or {"url": src["url"], "kept_sha256": digest(src["path"])}
+    download(src["url"], src["path"], force)
+    return {
+        "url": src["url"],
+        "sha256": digest(src["path"]),
+        "bytes": src["path"].stat().st_size,
+        "lines": sum(1 for _ in open(src["path"], encoding="utf-8")),
+    }
+
+
+def fetch_zh(force, limit=None, words=None):
+    """Trung–Việt : ses trois dumps, les lectures Hán Việt, la fréquence et
+    la table traditionnel -> simplifié."""
+    lock = {}
+    cfg = S.lang("zh")
+    for src in S.kaikki_sources("zh") + cfg.get("extra_sources", []):
+        lock[src["key"]] = fetch_kaikki(src, force, limit, words)
+    download(S.FREQ_ZH_URL, S.FREQ_ZH, force)
+    lock["frequence-zh"] = {"url": S.FREQ_ZH_URL, "sha256": digest(S.FREQ_ZH)}
+    download(S.OPENCC_TS_URL, S.OPENCC_TS, force)
+    lock["opencc-ts"] = {"url": S.OPENCC_TS_URL, "sha256": digest(S.OPENCC_TS)}
+    return lock
 
 
 def copy_from(src, dest, force):
@@ -71,20 +148,46 @@ def fetch_wordnet(force):
 
 
 def main():
-    force = "--force" in sys.argv
+    argv = sys.argv[1:]
+    force = "--force" in argv
+    only = argv[argv.index("--lang") + 1] if "--lang" in argv else None
+    limit = int(argv[argv.index("--limit") + 1]) if "--limit" in argv else None
+    words = None
+    if "--words" in argv:
+        path = argv[argv.index("--words") + 1]
+        words = {l.strip() for l in open(path, encoding="utf-8") if l.strip()}
     S.SOURCES.mkdir(parents=True, exist_ok=True)
+
+    # Une langue seule : on complète le verrou au lieu de le réécrire.
+    if only:
+        S.lang(only)
+        if only == "zh":
+            fresh = fetch_zh(force, limit, words)
+        else:
+            # Une autre langue : ses dumps kaikki, rien de plus (vz n'a que le
+            # Wiktionnaire anglais des mots vietnamiens).
+            # --limit et --words ne touchent que les dumps filtrés (la
+            # troisième langue de fr et en, voir foreign.py).
+            fresh = {s["key"]: fetch_kaikki(s, force, limit, words)
+                     for s in S.kaikki_sources(only)}
+        if limit or words:
+            what = f"{limit:,} lignes" if limit else f"{len(words):,} vedettes"
+            print(f"\n  échantillon de {what} : sources.lock inchangé")
+            return
+        lock = json.loads(S.LOCK.read_text()) if S.LOCK.exists() else {}
+        lock.update(fresh)
+        S.LOCK.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n",
+                          encoding="utf-8")
+        print("\n  sources.lock complété")
+        return
 
     lock = {}
 
-    for code in S.LANGS:
+    for code, cfg in S.LANGS.items():
+        if cfg.get("optional"):
+            continue
         for src in S.kaikki_sources(code):
-            download(src["url"], src["path"], force)
-            lock[src["key"]] = {
-                "url": src["url"],
-                "sha256": digest(src["path"]),
-                "bytes": src["path"].stat().st_size,
-                "lines": sum(1 for _ in open(src["path"], encoding="utf-8")),
-            }
+            lock[src["key"]] = fetch_kaikki(src, force)
 
     # Français : Verbiste et Lexique viennent du dépôt voisin. Les deux projets
     # doivent parler de la même morphologie ; deux copies qui divergent seraient
@@ -109,7 +212,7 @@ def main():
     # Le rattrapage, après les dumps : il a besoin d'eux pour savoir quelles
     # vedettes sont sans glose.
     for code, cfg in S.LANGS.items():
-        if not cfg.get("rescue", True):
+        if not cfg.get("rescue", True) or cfg.get("optional"):
             continue
         if force or not S.rescued(code).exists():
             print(f"  ↻ rattrapage {code}")
@@ -119,10 +222,16 @@ def main():
             print(f"  = rescued-{code}.jsonl déjà là")
         lock[f"rescued-{code}"] = {"sha256": digest(S.rescued(code))}
 
+    # Les langues optionnelles gardent leur ligne du verrou précédent.
+    if S.LOCK.exists():
+        old = json.loads(S.LOCK.read_text())
+        lock.update({k: v for k, v in old.items() if k not in lock})
     S.LOCK.write_text(json.dumps(lock, indent=2, ensure_ascii=False) + "\n",
                       encoding="utf-8")
     print(f"\n  sources.lock écrit")
-    for code in S.LANGS:
+    for code, cfg in S.LANGS.items():
+        if cfg.get("optional"):
+            continue
         for src in S.kaikki_sources(code):
             print(f"    {src['key']} : {lock[src['key']]['lines']:,} lignes")
 
