@@ -336,6 +336,15 @@ def main():
     # que seul le Wiktionnaire anglais connaît n'a rien à faire dans
     # Pháp–Việt. Voir foreign.py.
     if any(src.get("attach") for src in S.kaikki_sources(code)):
+        # Le Wiktionnaire vietnamien écrit parfois « soeur », « oeuvre » sans
+        # ligature ; l'anglais, « sœur ». Les lignes anglaises rejoignent la
+        # vedette vietnamienne au lieu d'être écartées comme orphelines.
+        for word in [w for w in by_word if "œ" in w or "æ" in w]:
+            plain = word.replace("œ", "oe").replace("æ", "ae")
+            rows = by_word[word]
+            if plain in by_word and all((r.get("_src") or {}).get("attach") for r in rows):
+                by_word[plain].extend(rows)
+                del by_word[word]
         before = len(by_word)
         # Une vedette que les retouches créent (« je », que le Wiktionnaire
         # vietnamien n'a pas) garde ses lignes de la troisième langue.
