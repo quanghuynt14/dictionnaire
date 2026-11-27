@@ -185,8 +185,12 @@ class Rank:
         value = min(counts) / (10 ** (len(syllables) - 1))
         # Le corpus est en minuscules : « Người » (un nom propre) et
         # « người » y ont le même compte. Taper « nguoi » veut dire le second.
+        # Diviser par deux ne suffisait pas : le nom de famille « Lại » et le
+        # prénom « Được » restaient dans les 300 premiers mots, devant
+        # « bác » ou « thương ». Un nom propre n'a pas la fréquence du mot
+        # commun qu'il écrit ; un centième l'en approche mieux.
         if word[:1].isupper():
-            value /= 2
+            value /= 100
         return value or default
 
 
