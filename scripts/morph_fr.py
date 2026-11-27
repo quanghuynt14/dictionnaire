@@ -236,6 +236,17 @@ def load_lexique():
                 continue
             if ortho != lemme:
                 forms[ortho].append((lemme, analyse_lexique(row)))
+    # Lexique écrit « oeil », « coeur », « soeur » sans ligature ; le
+    # Wiktionnaire, « œil », « cœur », « sœur ». Sans pont, ces mots-là
+    # n'avaient pas de fréquence et tombaient en queue du dictionnaire. On
+    # ajoute la graphie liée à côté, sans remplacer : « poème » et
+    # « moelle » s'écrivent bien « oe », et une clé « mœlle » ne mène à
+    # aucune vedette.
+    for lemme in [l for l in freq if "oe" in l]:
+        freq.setdefault(lemme.replace("oe", "œ"), freq[lemme])
+    for ortho in [o for o in forms if "oe" in o]:
+        forms.setdefault(ortho.replace("oe", "œ"), [
+            (l.replace("oe", "œ"), a) for l, a in forms[ortho]])
     return forms, freq
 
 

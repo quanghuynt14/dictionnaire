@@ -74,6 +74,10 @@ def own_explains(own):
         }
         if sense.get("note"):
             item["note"] = sense["note"]
+        # Việt–Pháp : les équivalents anglais du même sens, à côté du
+        # français, pour qui apprend les trois langues.
+        if sense.get("en"):
+            item["en"] = sense["en"]
         out.append(item)
     return out
 

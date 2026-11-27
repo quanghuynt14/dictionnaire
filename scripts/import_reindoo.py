@@ -17,10 +17,17 @@ Le format d'entrée, un bloc par mot :
        [familier]
        ex: Cà vạt đen hay trắng? = Cravate noire ou blanche ?
        note: …
+       en: white
+
+`en:` (depuis le 2026-11-27) : les équivalents anglais du sens, pour
+apprendre les trois langues ensemble. Les mille premières entrées n'en ont
+pas ; le second lot (dict-study, lexicon-nofr) en a.
 
 Le script refuse une ligne qu'il ne comprend pas plutôt que de la perdre.
 
-Usage :  python3 scripts/import_reindoo.py CHEMIN/entries.md
+Usage :  python3 scripts/import_reindoo.py CHEMIN/entries.md [AUTRE.md…]
+
+Plusieurs fichiers : leurs entrées se suivent, dans l'ordre donné.
 """
 
 import json
@@ -59,6 +66,8 @@ def parse(block):
             sense["labels"] += [l.strip() for l in re.findall(r"\[([^\]]+)\]", line)]
         elif m := EXAMPLE.fullmatch(line):
             sense["examples"].append({"src": nfc(m.group(1)), "tr": nfc(m.group(2))})
+        elif line.startswith("en:"):
+            sense["en"] = nfc(line[3:])
         elif line.startswith("note:"):
             note = nfc(line[5:])
             sense["note"] = f"{sense['note']} {note}".strip()
@@ -70,8 +79,7 @@ def parse(block):
 
 
 def main():
-    src = sys.argv[1]
-    text = open(src, encoding="utf-8").read()
+    text = "\n".join(open(src, encoding="utf-8").read() for src in sys.argv[1:])
     entries = [parse(b) for b in re.findall(r"```[a-z]*\n(.*?)```", text, re.S)]
     words = [e["word"] for e in entries]
     if len(set(words)) != len(words):
