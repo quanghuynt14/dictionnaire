@@ -238,10 +238,18 @@ def apply_edits(entries, code):
             patch.setdefault("lang", code)
             patch.setdefault("headword", eid.split(":", 1)[1])
             patch.setdefault("blocks", [])
+            patch["blocks"] = patch["blocks"] + patch.pop("add_blocks", [])
             patch.setdefault("rank", 0.0)
             entries[eid] = patch
         else:
-            base.update({k: v for k, v in patch.items() if k != "id"})
+            # `add_blocks` ajoute au lieu de remplacer : c'est ainsi qu'un mot
+            # anglais reçoit un bloc français écrit par Claude sans perdre
+            # ses sens vietnamiens. Le reste du patch remplace, comme avant.
+            added = patch.get("add_blocks") or []
+            base.update({k: v for k, v in patch.items() if k not in ("id", "add_blocks")})
+            # Les sens vietnamiens d'abord : c'est la langue du dictionnaire.
+            base["blocks"] = sorted(base.get("blocks", []) + added,
+                                    key=lambda b: b.get("gloss_lang", "vi") != "vi")
         entries[eid]["edited"] = True
         n += 1
     return n
@@ -322,9 +330,18 @@ def main():
     # Pháp–Việt. Voir foreign.py.
     if any(src.get("attach") for src in S.kaikki_sources(code)):
         before = len(by_word)
+        # Une vedette que les retouches créent (« je », que le Wiktionnaire
+        # vietnamien n'a pas) garde ses lignes de la troisième langue.
+        created = set()
+        edits = S.ROOT / "data" / f"edits-{code}.jsonl"
+        if edits.exists():
+            for line in open(edits, encoding="utf-8"):
+                line = line.strip()
+                if line and not line.startswith("//"):
+                    created.add(json.loads(line).get("id", "").split(":", 1)[-1])
         by_word = collections.defaultdict(list, {
             w: rows for w, rows in by_word.items()
-            if any(not (r.get("_src") or {}).get("attach") for r in rows)})
+            if w in created or any(not (r.get("_src") or {}).get("attach") for r in rows)})
         print(f"    {before - len(by_word):,} vedettes de la troisième langue seule, écartées")
 
     freq = morph.frequency()

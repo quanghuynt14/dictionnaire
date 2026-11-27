@@ -152,12 +152,17 @@ def explains_of(entry, code=None):
             # `explains` n'a pas de champ pour la porter.
             if block.get("pos_vi"):
                 explain = f"({block['pos_vi']}) {explain}"
-            out.append({
+            item = {
                 "explain": explain,
                 "synonyms": (entry.get("synonyms") or [])[:2] if first else [],
                 "antonyms": (entry.get("antonyms") or [])[:2] if first else [],
                 "exampleSentences": examples[:4],
-            })
+            }
+            # Un bloc écrit par Claude (une retouche `add_blocks`) le dit,
+            # sens par sens : le reste de l'entrée vient du Wiktionnaire.
+            if block.get("by"):
+                item["by"] = block["by"]
+            out.append(item)
             first = False
     return out
 
