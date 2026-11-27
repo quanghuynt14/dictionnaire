@@ -1,0 +1,81 @@
+# Les trois dictionnaires de reindoo en entier, avec leur troisième langue.
+# Le VPS n'a ni la mémoire (Anh–Việt dépasse 3,8 Go) ni le disque (les dumps
+# de la troisième langue pèsent 800 Mo) : la construction complète se vérifie
+# ici, avant que la branche ne rejoigne main, que la CI d'iOS suit.
+name: trilingue
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [trilingue]
+    paths:
+      - scripts/**
+      - data/**
+      - .github/workflows/trilingue.yml
+
+jobs:
+  mongo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lexique et Verbiste
+        # fetch.py les prend dans le dépôt voisin `conjugaison`.
+        run: |
+          set -euo pipefail
+          dir=../conjugaison/data/sources
+          mkdir -p "$dir"
+          curl -fsSL -o "$dir/Lexique383.tsv" http://www.lexique.org/databases/Lexique383/Lexique383.tsv
+          curl -fsSL -o "$dir/verbs-fr.xml" https://raw.githubusercontent.com/bretttolbert/verbecc/8afdd68679b18e2fd58edf5324ca24ca68bfabdb/src/verbecc/data/xml/verbs/verbs-fr.xml
+          curl -fsSL -o "$dir/conjugations-fr.xml" https://raw.githubusercontent.com/bretttolbert/verbecc/8afdd68679b18e2fd58edf5324ca24ca68bfabdb/src/verbecc/data/xml/conjugations/conjugations-fr.xml
+      - name: Sources
+        run: python3 scripts/fetch.py
+      - name: NDJSON
+        # LANG sur la ligne de commande : celui de l'environnement du runner
+        # (C.UTF-8) l'emporterait sur le `?=` du Makefile.
+        run: |
+          set -euo pipefail
+          for l in fr en vi; do
+            /usr/bin/time -v make mongo LANG=$l 2>&1 | grep -vE '^\s+(Page|Volun|Invol|Swap|File|Socket|Signal|Average|Exit|Minor|Major)'
+          done
+          ls -la build data/sources
+      - name: Couverture
+        # Les 5 000 mots les plus fréquents de chaque langue : combien ont
+        # leurs deux autres langues ? Une vedette, ou une forme qui y mène.
+        run: |
+          python3 - <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, sys
+          sys.path.insert(0, "scripts")
+          import morph_fr, morph_en
+          OTHER = {"fr": ("vi", "en"), "en": ("vi", "fr"), "vi": ("fr", "en")}
+          print("| langue | vedettes | " + " | ".join(f"avec {a} / {b}" for a, b in OTHER.values()) + " |")
+          for code, mod in (("fr", morph_fr), ("en", morph_en), ("vi", None)):
+              langs = {}
+              for line in open(f"build/mongo-{code}.ndjson"):
+                  d = json.loads(line)
+                  if d["_collection"] != "dictionary":
+                      continue
+                  have = set()
+                  for x in d["explains"]:
+                      t = x["explain"]
+                      have.add("en" if "[EN]" in t else "fr" if "[FR]" in t else
+                               ("fr" if code == "vi" else "vi"))
+                      if x.get("en"):
+                          have.add("en")
+                  langs[d["word"]] = (d["rank"], have)
+              top = sorted(langs, key=lambda w: -langs[w][0])[:5000]
+              a, b = OTHER[code]
+              na = sum(a in langs[w][1] for w in top)
+              nb = sum(b in langs[w][1] for w in top)
+              both = sum(a in langs[w][1] and b in langs[w][1] for w in top)
+              print(f"| {code} | {len(langs):,} | {a} {na:,}, {b} {nb:,}, les deux {both:,} / 5 000 |")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mongo-trilingue
+          path: |
+            build/mongo-fr.ndjson
+            build/mongo-en.ndjson
+            build/mongo-vi.ndjson
+            data/sources.lock
+          compression-level: 9
