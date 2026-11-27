@@ -246,6 +246,13 @@ def apply_edits(entries, code):
             # anglais reçoit un bloc français écrit par Claude sans perdre
             # ses sens vietnamiens. Le reste du patch remplace, comme avant.
             added = patch.get("add_blocks") or []
+            # Un patch `blocks` écrit avant la troisième langue remplace les
+            # sens vietnamiens ; il ne doit pas effacer l'anglais de
+            # « faire » venu du Wiktionnaire anglais.
+            if "blocks" in patch:
+                home = "fr" if code == "vi" else "vi"
+                added = added + [b for b in base.get("blocks", [])
+                                 if b.get("gloss_lang", "vi") != home]
             base.update({k: v for k, v in patch.items() if k not in ("id", "add_blocks")})
             # Les sens vietnamiens d'abord : c'est la langue du dictionnaire.
             base["blocks"] = sorted(base.get("blocks", []) + added,

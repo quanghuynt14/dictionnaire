@@ -254,6 +254,37 @@ def frequency():
     return load_lexique()[1]
 
 
+# Les étiquettes de Lexique, dans la langue du lecteur (voir GENRE, NOMBRE).
+FS, MP, FP, PL = "giống cái số ít", "giống đực số nhiều", "giống cái số nhiều", "số nhiều"
+GRAMMAR = {
+    "la": ("le", FS), "les": ("le", PL), "l'": ("le", "rút gọn"),
+    "une": ("un", FS), "des": ("un", PL), "d'": ("de", "rút gọn"),
+    "au": ("à", "à + le"), "aux": ("à", "à + les"), "du": ("de", "de + le"),
+    "ma": ("mon", FS), "mes": ("mon", PL), "ta": ("ton", FS), "tes": ("ton", PL),
+    "sa": ("son", FS), "ses": ("son", PL), "nos": ("notre", PL), "vos": ("votre", PL),
+    "leurs": ("leur", PL), "cet": ("ce", "giống đực, trước nguyên âm"),
+    "cette": ("ce", FS), "ces": ("ce", PL),
+    "quelle": ("quel", FS), "quels": ("quel", MP), "quelles": ("quel", FP),
+    "quelques": ("quelque", PL), "toute": ("tout", FS), "tous": ("tout", MP),
+    "toutes": ("tout", FP), "aucune": ("aucun", FS),
+    "telle": ("tel", FS), "tels": ("tel", MP), "telles": ("tel", FP),
+    "certaine": ("certain", FS), "certains": ("certain", MP), "certaines": ("certain", FP),
+    "celle": ("celui", FS), "ceux": ("celui", MP), "celles": ("celui", FP),
+    "celle-ci": ("celui-ci", FS), "ceux-ci": ("celui-ci", MP), "celles-ci": ("celui-ci", FP),
+    "celle-là": ("celui-là", FS), "ceux-là": ("celui-là", MP), "celles-là": ("celui-là", FP),
+    "laquelle": ("lequel", FS), "lesquels": ("lequel", MP), "lesquelles": ("lequel", FP),
+    "auquel": ("lequel", "à + lequel"), "auxquels": ("lequel", "à + lesquels"),
+    "auxquelles": ("lequel", "à + lesquelles"), "duquel": ("lequel", "de + lequel"),
+    "mienne": ("mien", FS), "miens": ("mien", MP), "miennes": ("mien", FP),
+    "tienne": ("tien", FS), "tiens": ("tien", MP), "tiennes": ("tien", FP),
+    "sienne": ("sien", FS), "siens": ("sien", MP), "siennes": ("sien", FP),
+    "nôtres": ("nôtre", PL), "vôtres": ("vôtre", PL), "chacune": ("chacun", FS),
+    "nulle": ("nul", FS),
+    "d'autres": ("autre", "de + autres"), "l'une": ("l'un", FS), "uns": ("un", MP),
+    "unes": ("un", FP),
+}
+
+
 def build(entries_by_head):
     """{vedette: [lignes kaikki]} -> ([(forme, lemme, analyse)], compteurs).
 
@@ -292,8 +323,20 @@ def build(entries_by_head):
                 n_lexique += 1
                 merged[form][lemme].update(dict.fromkeys(labels))
 
+    # 3. Les mots grammaticaux : Lexique range « cette », « ses », « aux »
+    # sous eux-mêmes, et ces formes, parmi les plus fréquentes du français,
+    # ne menaient à aucune page. Une classe fermée : on l'écrit.
+    n_grammar = 0
+    for form, (lemme, label) in GRAMMAR.items():
+        # Même quand la forme a sa page (« la », la note ; « des »),
+        # elle mène aussi à son lemme, comme « went » mène à « go ».
+        if lemme in heads:
+            n_grammar += 1
+            merged[form][lemme].update(dict.fromkeys([label]))
+
     for form, targets in merged.items():
         for lemme, labels in targets.items():
             out.append((form, lemme, ", ".join(l for l in labels if l) or None))
 
-    return out, {"verbiste": n_verbs, "pronominaux": n_pron, "lexique": n_lexique}
+    return out, {"verbiste": n_verbs, "pronominaux": n_pron, "lexique": n_lexique,
+                 "grammaticaux": n_grammar}
