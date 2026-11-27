@@ -146,18 +146,53 @@ def move_tone(syllable):
     return unicodedata.normalize("NFC", "".join(out))
 
 
+# Les consonnes après lesquelles i et y s'échangent en fin de syllabe :
+# « lý do » / « lí do », « kỷ niệm » / « kỉ niệm », « hy vọng » / « hi vọng ».
+# Les deux s'écrivent, et les Wiktionnaires ne choisissent pas le même : le
+# français a « lí do », l'anglais « lý do », et chacun manquait de l'autre
+# langue (mesuré le 2026-11-27 : la plupart des 176 mots fréquents sans
+# anglais). Jamais après une voyelle : « tai » et « tay » sont deux mots.
+SWAP_IY = set("hklmstv")
+
+
+def swap_iy(syllable):
+    """« lý » -> « lí », « Mỹ » -> « Mĩ ». None si la syllabe ne s'y prête pas."""
+    nfd = unicodedata.normalize("NFD", syllable)
+    tones = [c for c in nfd if c in TONES]
+    base = "".join(c for c in nfd if c not in TONES)
+    if len(tones) > 1 or len(base) != 2 or base[0].lower() not in SWAP_IY:
+        return None
+    vowel = {"i": "y", "y": "i", "I": "Y", "Y": "I"}.get(base[1])
+    if not vowel:
+        return None
+    return unicodedata.normalize("NFC", base[0] + vowel + "".join(tones))
+
+
 def other_spelling(word):
-    """« hoà bình » -> « hòa bình ». None si le mot n'a qu'une orthographe."""
-    changed = False
-    out = []
-    for syllable in word.split(" "):
-        moved = move_tone(syllable)
-        if moved and moved != syllable:
-            changed = True
-            out.append(moved)
-        else:
-            out.append(syllable)
-    return " ".join(out) if changed else None
+    """« hoà bình » -> « hòa bình », « lý do » -> « lí do ». None si le mot
+    n'a qu'une orthographe.
+
+    Le ton d'abord, i/y sinon : un mot qui aurait les deux variantes à la
+    fois n'en reçoit qu'une, et c'est assez rare pour ne pas compliquer.
+
+    i/y seulement dans un mot composé. Seule, une syllabe peut changer de
+    mot : « ti » (tout petit) n'est pas « ty » (un service administratif),
+    alors que « công ti » est bien « công ty ».
+    """
+    changes = (move_tone, swap_iy) if " " in word.strip() else (move_tone,)
+    for change in changes:
+        changed = False
+        out = []
+        for syllable in word.split(" "):
+            moved = change(syllable)
+            if moved and moved != syllable:
+                changed = True
+                out.append(moved)
+            else:
+                out.append(syllable)
+        if changed:
+            return " ".join(out)
+    return None
 
 
 class Rank:
@@ -258,7 +293,9 @@ def build(entries_by_head):
             folded += 1
         other = other_spelling(word)
         if other:
-            out.append((other, word, "dấu đặt chỗ khác"))
+            # Un ton déplacé se replie sur la même clé ; i/y, non.
+            label = "dấu đặt chỗ khác" if fold(other) == key else "viết i/y"
+            out.append((other, word, label))
             respelled += 1
     out.sort(key=lambda t: (t[0], -rank.get(t[1]), t[1]))
     return out, f"{folded:,} clés sans accents, {respelled:,} tons déplacés"
