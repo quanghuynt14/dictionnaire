@@ -190,7 +190,17 @@ def main():
         if not lemmas:
             continue
         if lemmas[0] in own:
-            print(f"  {word} : doublon de l'entrée {lemmas[0]}, laissé de côté")
+            # Le doublon peut avoir l'anglais que l'entrée gardée n'a pas
+            # (« công ti », écrit après les premières entrées) : même glose,
+            # on le reprend.
+            dup = {s["gloss"]: s.get("en") for s in own[word]["senses"]}
+            n = 0
+            for sense in own[lemmas[0]]["senses"]:
+                if not sense.get("en") and dup.get(sense["gloss"]):
+                    sense["en"] = dup[sense["gloss"]]
+                    n += 1
+            print(f"  {word} : doublon de l'entrée {lemmas[0]}, laissé de côté"
+                  + (f" ({n} sens anglais repris)" if n else ""))
             del own[word]
         else:
             own[lemmas[0]] = own.pop(word)
